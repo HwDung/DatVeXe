@@ -25,6 +25,7 @@ function findActiveSessionById(sessionId, userId, now) {
         select: {
           id: true,
           email: true,
+          fullName: true,
           roles: {
             include: {
               role: {
