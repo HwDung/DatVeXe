@@ -1,65 +1,85 @@
-# DatVeXe API
+# 🚌 Rightway - Hệ thống Đặt Vé Xe Trực Tuyến & Trang Quản Trị Admin
 
-Backend API cho ứng dụng đặt vé xe, xây dựng bằng Express, TypeScript, Prisma và Microsoft SQL Server.
+Dự án fullstack đặt vé xe khách Rightway gồm **Backend Express (JavaScript + Prisma + SQL Server)** và **Frontend React (Vite + React Router)** mô phỏng sát 100% thiết kế giao diện Figma, kèm theo **Trang Quản trị Admin**.
 
-## Chức năng
+---
 
-- Đăng ký tài khoản, băm mật khẩu bằng bcrypt và đăng nhập.
-- Access token JWT thời hạn 15 phút; refresh token dạng ngẫu nhiên chỉ lưu hash trong session.
-- Làm mới token có xoay vòng; logout thu hồi session và access token của session đó mất hiệu lực ngay.
-- Role/permission lưu trong database. Tài khoản mới nhận role `USER`; role `ADMIN` được khởi tạo qua seed.
-- Middleware xác thực JWT/session, kiểm tra role Admin và kiểm tra permission.
+## 📸 Tổng quan giao diện
 
-## Cấu trúc MVC
+1. **Trang chủ (`/`)**:
+   - Hero banner "Hành trình đẹp hơn cùng Rightway", các huy hiệu bảo đảm dịch vụ.
+   - Thanh tìm kiếm chuyến xe (Điểm đi, Điểm đến, Ngày đi, Số hành khách).
+   - Thao tác nhanh: Tra cứu vé, Đổi/Hủy vé, Vé của tôi, Hỗ trợ khách hàng.
+   - Ưu đãi nổi bật với các thẻ khuyến mãi.
+   - Tuyến xe phổ biến dạng bảng biểu có gắn thẻ trạng thái.
+   - Tin tức mới nhất và Footer chuẩn nhận diện thương hiệu.
 
-- `src/modules/*/*.routes.ts`: khai báo URL, middleware và controller.
-- `src/modules/*/*.controller.ts`: nhận request, validate input và định dạng response.
-- `src/modules/*/*.service.ts`: nghiệp vụ xác thực, session và phân quyền.
-- `src/models/**/*.model.ts`: truy cập dữ liệu SQL Server qua Prisma.
-- `prisma/schema.prisma`: định nghĩa các model và quan hệ database.
+2. **Tìm vé & Bộ lọc (`/search`)**:
+   - Thanh tóm tắt lộ trình tìm kiếm.
+   - Bộ lọc chi tiết: Khung giờ khởi hành, Hãng xe, Khoảng giá, Đánh giá sao.
+   - Danh sách thẻ chuyến xe (giờ đi - thời gian - giờ đến, nhà xe, hạng ghế, giá vé).
 
-## Chạy local
+3. **Chọn chỗ ngồi (`/booking/seats`)**:
+   - Quy trình 4 bước: Chọn chuyến -> Chọn chỗ -> Thông tin hành khách -> Thanh toán.
+   - Sơ đồ ghế tầng dưới / tầng trên, hiển thị trực quan trạng thái ghế: *Trống*, *Đang chọn*, *Đã đặt*.
+   - Khung thông tin đặt vé tóm tắt ở cột phải.
 
-Yêu cầu Node.js 20+, npm và Docker Compose (hoặc SQL Server 2019+ tương thích).
+4. **Thông tin hành khách (`/booking/passenger`)** & **Thanh toán (`/booking/payment`)**.
 
-1. Sao chép `.env.example` thành `.env`. Đổi `MSSQL_SA_PASSWORD`, dùng cùng mật khẩu đó trong `DATABASE_URL`, thay `JWT_ACCESS_SECRET` bằng secret ngẫu nhiên dài tối thiểu 32 ký tự, và thiết lập `ADMIN_EMAIL`/`ADMIN_PASSWORD`.
-2. Khởi động SQL Server bằng `docker compose up -d db`.
-3. Tạo database `DatVeXe` một lần bằng SQL Server Management Studio hoặc `sqlcmd`:
+5. **Trang Quản trị Admin (`/admin`)**:
+   - Bảng điều khiển (Dashboard) thống kê đặt vé, doanh thu, thành viên, chuyến xe.
+   - Quản lý chuyến xe (`/admin/trips`)
+   - Quản lý tuyến đường (`/admin/routes`)
+   - Quản lý nhà xe (`/admin/companies`)
+   - Quản lý đơn đặt vé (`/admin/bookings`)
+   - Quản lý khuyến mãi (`/admin/promotions`)
+   - Quản lý tin tức (`/admin/news`)
+   - Quản lý người dùng (`/admin/users`)
 
-   ```sql
-   IF DB_ID(N'DatVeXe') IS NULL
-       CREATE DATABASE [DatVeXe];
-   ```
+---
 
-4. Cài dependencies, tạo schema và seed dữ liệu:
+## 🛠️ Cài đặt & Khởi chạy
 
-	```sh
-	npm install
-	npx prisma migrate dev --name init
-	npm run db:seed
-	```
+### 1. Yêu cầu môi trường
+- **Node.js**: v20+
+- **Database**: Microsoft SQL Server (hoặc Docker)
 
-5. Chạy API bằng `npm run dev`. Mặc định API ở `http://localhost:3000`.
+### 2. Cấu hình cơ sở dữ liệu
+Khởi động SQL Server bằng Docker (nếu có):
+```bash
+docker compose up -d db
+```
+Hoặc đảm bảo SQL Server của bạn đang chạy với cấu hình trong file `backend/.env`.
 
-## API
+Tạo Database `DatVeXe` trên SQL Server:
+```sql
+IF DB_ID(N'DatVeXe') IS NULL
+    CREATE DATABASE [DatVeXe];
+```
 
-Các endpoint nằm dưới `/api`:
+Đẩy schema và nạp dữ liệu mẫu:
+```bash
+cd backend
+copy .env.example .env
+npm install
+npx prisma db push
+npm run db:seed
+```
 
-| Method | Path | Mô tả |
-| --- | --- | --- |
-| POST | `/auth/register` | Tạo tài khoản `USER` |
-| POST | `/auth/login` | Đăng nhập, trả access token và đặt refresh cookie HttpOnly |
-| POST | `/auth/refresh` | Xoay vòng refresh token cookie, trả access token mới |
-| POST | `/auth/logout` | Thu hồi session hiện tại và xóa refresh cookie |
-| GET | `/auth/me` | Lấy user hiện tại; yêu cầu Bearer access token |
-| GET | `/admin/users` | Liệt kê user; yêu cầu role `ADMIN` và `users:read` |
-| PUT | `/admin/users/:userId/roles` | Cập nhật role user; yêu cầu role `ADMIN` và `users:manage` |
-| GET | `/admin/roles` | Liệt kê role/permission; yêu cầu role `ADMIN` và `roles:read` |
+### 3. Khởi chạy Backend API
+```bash
+cd backend
+npm run dev
+```
+API server chạy tại: `http://localhost:3000`
 
-Gửi access token qua `Authorization: Bearer <token>`. Refresh cookie chỉ áp dụng trên đường dẫn `/api/auth`; client trình duyệt cần gửi request với credentials. Cấu hình `CORS_ORIGIN`, `COOKIE_SECURE` và `COOKIE_SAME_SITE` phù hợp khi deploy. Nếu frontend và API khác site, dùng HTTPS, `COOKIE_SECURE=true`, `COOKIE_SAME_SITE=none` và bổ sung cơ chế CSRF phù hợp.
+### 4. Khởi chạy Frontend
+Mở một terminal mới:
+```bash
+cd frontend
+npm run dev
+```
+Trang web mở tại: `http://localhost:5173`
 
-Định dạng lỗi: `{ "error": { "code": "...", "message": "..." } }`.
-
-## Kiểm tra bằng Postman
-
-Import `postman/DatVeXe.postman_collection.json`. Đặt `adminEmail` và `adminPassword` trong collection variables theo tài khoản đã seed, sau đó chạy API và chọn **Run collection** theo thứ tự. Collection tự sinh email đăng ký mới, lưu access token/user ID, giữ refresh cookie trong Postman cookie jar và kiểm tra cả quyền `USER`/`ADMIN`, refresh cùng logout.
+- Truy cập trang khách hàng: `http://localhost:5173/`
+- Truy cập trang quản trị Admin: `http://localhost:5173/admin`
