@@ -5,6 +5,39 @@ const api = axios.create({
   withCredentials: true,
 });
 
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('accessToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const original = error.config;
+    const status = error.response?.status;
+    const url = original?.url || '';
+    const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/refresh') || url.includes('/auth/logout');
+
+    if (status === 401 && original && !original._retry && !isAuthEndpoint) {
+      original._retry = true;
+      try {
+        const { data } = await api.post('/auth/refresh');
+        localStorage.setItem('accessToken', data.accessToken);
+        original.headers = original.headers || {};
+        original.headers.Authorization = `Bearer ${data.accessToken}`;
+        return api(original);
+      } catch {
+        localStorage.removeItem('accessToken');
+      }
+    }
+
+    return Promise.reject(error);
+  },
+);
+
 export const tripService = {
   search: (params) => api.get('/trips/search', { params }),
   getById: (id) => api.get(`/trips/${id}`),
@@ -36,6 +69,8 @@ export const authService = {
   login: (data) => api.post('/auth/login', data),
   register: (data) => api.post('/auth/register', data),
   logout: () => api.post('/auth/logout'),
+  me: () => api.get('/auth/me'),
+  refresh: () => api.post('/auth/refresh'),
 };
 
 export default api;

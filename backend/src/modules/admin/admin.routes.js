@@ -1,10 +1,9 @@
 const { Router } = require("express");
 const { prisma } = require("../../lib/prisma");
+const { authenticate } = require("../../middleware/authenticate");
+const { requireRole } = require("../../middleware/authorization");
 
 const adminRouter = Router();
-
-const authenticate = (_req, _res, next) => next();
-const requireRole = (_role) => (_req, _res, next) => next();
 
 adminRouter.use(authenticate, requireRole("admin"));
 

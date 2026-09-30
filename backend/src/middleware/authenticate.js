@@ -51,6 +51,7 @@ async function authenticate(request, _response, next) {
     userId: session.user.id,
     sessionId: session.id,
     email: session.user.email,
+    fullName: session.user.fullName,
     roles,
     permissions,
   };

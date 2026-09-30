@@ -1,15 +1,20 @@
 import React from 'react';
-import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import '../../styles/admin.css';
 
 const AdminLayout = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout } = useAuth();
 
-  const handleLogout = () => {
-    // Perform logout logic here (e.g., clearing tokens)
-    navigate('/login');
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login', { replace: true });
   };
+
+  const displayName = user?.fullName || user?.email || 'Admin';
+  const avatarLetter = displayName.charAt(0).toUpperCase();
 
   const getPageTitle = () => {
     const path = location.pathname;
@@ -72,8 +77,8 @@ const AdminLayout = ({ children }) => {
         <header className="admin-topbar">
           <h1>{getPageTitle()}</h1>
           <div className="admin-user-info">
-            <span>Admin User</span>
-            <div className="admin-avatar">A</div>
+            <span>{displayName}</span>
+            <div className="admin-avatar">{avatarLetter}</div>
           </div>
         </header>
 

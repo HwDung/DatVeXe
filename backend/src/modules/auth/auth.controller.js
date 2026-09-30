@@ -70,6 +70,7 @@ function me(request, response, next) {
     user: {
       id: request.auth.userId,
       email: request.auth.email,
+      fullName: request.auth.fullName,
       roles: request.auth.roles,
       permissions: request.auth.permissions,
     },
