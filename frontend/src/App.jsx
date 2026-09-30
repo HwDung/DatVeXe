@@ -1,4 +1,6 @@
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import { AdminRoute, GuestRoute, ProtectedRoute } from './components/auth/RouteGuards';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import HomePage from './pages/HomePage';
@@ -20,6 +22,7 @@ import AdminNews from './pages/admin/AdminNews';
 import AdminUsers from './pages/admin/AdminUsers';
 import './styles/global.css';
 import './styles/admin.css';
+import './styles/auth.css';
 
 function MainLayout() {
   return (
@@ -29,12 +32,48 @@ function MainLayout() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/search" element={<SearchPage />} />
-          <Route path="/booking/seats" element={<SeatSelectionPage />} />
-          <Route path="/booking/passenger" element={<PassengerInfoPage />} />
-          <Route path="/booking/payment" element={<PaymentPage />} />
+          <Route
+            path="/booking/seats"
+            element={(
+              <ProtectedRoute>
+                <SeatSelectionPage />
+              </ProtectedRoute>
+            )}
+          />
+          <Route
+            path="/booking/passenger"
+            element={(
+              <ProtectedRoute>
+                <PassengerInfoPage />
+              </ProtectedRoute>
+            )}
+          />
+          <Route
+            path="/booking/payment"
+            element={(
+              <ProtectedRoute>
+                <PaymentPage />
+              </ProtectedRoute>
+            )}
+          />
           <Route path="/lookup" element={<BookingLookupPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
+          <Route
+            path="/login"
+            element={(
+              <GuestRoute>
+                <LoginPage />
+              </GuestRoute>
+            )}
+          />
+          <Route
+            path="/register"
+            element={(
+              <GuestRoute>
+                <RegisterPage />
+              </GuestRoute>
+            )}
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
       <Footer />
@@ -48,18 +87,21 @@ function AppContent() {
 
   if (isAdmin) {
     return (
-      <AdminLayout>
-        <Routes>
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/trips" element={<AdminTrips />} />
-          <Route path="/admin/routes" element={<AdminRoutes />} />
-          <Route path="/admin/companies" element={<AdminCompanies />} />
-          <Route path="/admin/bookings" element={<AdminBookings />} />
-          <Route path="/admin/promotions" element={<AdminPromotions />} />
-          <Route path="/admin/news" element={<AdminNews />} />
-          <Route path="/admin/users" element={<AdminUsers />} />
-        </Routes>
-      </AdminLayout>
+      <AdminRoute>
+        <AdminLayout>
+          <Routes>
+            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/trips" element={<AdminTrips />} />
+            <Route path="/admin/routes" element={<AdminRoutes />} />
+            <Route path="/admin/companies" element={<AdminCompanies />} />
+            <Route path="/admin/bookings" element={<AdminBookings />} />
+            <Route path="/admin/promotions" element={<AdminPromotions />} />
+            <Route path="/admin/news" element={<AdminNews />} />
+            <Route path="/admin/users" element={<AdminUsers />} />
+            <Route path="*" element={<Navigate to="/admin" replace />} />
+          </Routes>
+        </AdminLayout>
+      </AdminRoute>
     );
   }
 
@@ -69,7 +111,9 @@ function AppContent() {
 function App() {
   return (
     <BrowserRouter>
-      <AppContent />
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </BrowserRouter>
   );
 }

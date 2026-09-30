@@ -53,6 +53,32 @@
   gap: 20px;
 }
 
+.header-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+}
+
+.header-user-name {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-admin-link,
+.header-logout {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.header-logout:hover,
+.header-admin-link:hover {
+  text-decoration: underline;
+}
+
 .auth-link {
   display: flex;
   align-items: center;

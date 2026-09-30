@@ -6,7 +6,10 @@ function requireRole(roleName) {
       next(new HttpError(401, "UNAUTHORIZED", "Authentication required"));
       return;
     }
-    if (!request.auth.roles.includes(roleName)) {
+    const hasRole = request.auth.roles?.some(
+      (role) => String(role).toLowerCase() === String(roleName).toLowerCase()
+    );
+    if (!hasRole) {
       next(new HttpError(403, "FORBIDDEN", "Insufficient role"));
       return;
     }
