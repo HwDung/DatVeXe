@@ -23,6 +23,7 @@ const LoginPage = () => {
     setError('');
     setSubmitting(true);
     try {
+      // Diem noi giao dien Login voi API authentication.
       const user = await login({ email: email.trim(), password });
       const from = location.state?.from?.pathname;
       const admin = isAdminUser(user);
