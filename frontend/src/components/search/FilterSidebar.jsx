@@ -1,30 +1,33 @@
-import React from 'react';
+const FilterSidebar = ({ filters, onChange, onClear }) => {
+  const toggleFilter = (key, value) => {
+    const selected = filters[key];
+    onChange({ [key]: selected.includes(value) ? selected.filter((item) => item !== value) : [...selected, value] });
+  };
 
-const FilterSidebar = () => {
   return (
     <div className="filter-sidebar">
       <div className="filter-header">
         <h2>Bộ lọc tìm kiếm</h2>
-        <button className="clear-filter">Xoá lọc</button>
+        <button className="clear-filter" type="button" onClick={onClear}>Xoá lọc</button>
       </div>
       
       <div className="filter-group">
         <h3>Giờ khởi hành</h3>
         <div className="checkbox-group">
           <label className="checkbox-label">
-            <input type="checkbox" />
+            <input type="checkbox" checked={filters.departurePeriods.includes('early')} onChange={() => toggleFilter('departurePeriods', 'early')} />
             <span>Sáng sớm 00:00 - 06:00</span>
           </label>
           <label className="checkbox-label">
-            <input type="checkbox" />
+            <input type="checkbox" checked={filters.departurePeriods.includes('morning')} onChange={() => toggleFilter('departurePeriods', 'morning')} />
             <span>Sáng 06:00 - 12:00</span>
           </label>
           <label className="checkbox-label">
-            <input type="checkbox" />
+            <input type="checkbox" checked={filters.departurePeriods.includes('afternoon')} onChange={() => toggleFilter('departurePeriods', 'afternoon')} />
             <span>Chiều 12:00 - 18:00</span>
           </label>
           <label className="checkbox-label">
-            <input type="checkbox" />
+            <input type="checkbox" checked={filters.departurePeriods.includes('evening')} onChange={() => toggleFilter('departurePeriods', 'evening')} />
             <span>Tối 18:00 - 24:00</span>
           </label>
         </div>
@@ -33,10 +36,10 @@ const FilterSidebar = () => {
       <div className="filter-group">
         <h3>Khoảng giá</h3>
         <div className="range-slider">
-          <input type="range" min="200000" max="500000" style={{width: '100%', accentColor: 'var(--primary)'}} defaultValue="500000" />
+          <input type="range" min="200000" max="500000" step="10000" style={{width: '100%', accentColor: 'var(--primary)'}} value={filters.maxPrice} onChange={(event) => onChange({ maxPrice: Number(event.target.value) })} aria-label="Giá vé tối đa" />
           <div className="range-values">
             <span>200.000đ</span>
-            <span>500.000đ</span>
+            <span>{filters.maxPrice.toLocaleString('vi-VN')}đ</span>
           </div>
         </div>
       </div>
@@ -45,19 +48,19 @@ const FilterSidebar = () => {
         <h3>Nhà xe</h3>
         <div className="checkbox-group">
           <label className="checkbox-label">
-            <input type="checkbox" />
+            <input type="checkbox" checked={filters.companies.includes('Phương Trang')} onChange={() => toggleFilter('companies', 'Phương Trang')} />
             <span>Phương Trang</span>
           </label>
           <label className="checkbox-label">
-            <input type="checkbox" />
+            <input type="checkbox" checked={filters.companies.includes('Thành Bưởi')} onChange={() => toggleFilter('companies', 'Thành Bưởi')} />
             <span>Thành Bưởi</span>
           </label>
           <label className="checkbox-label">
-            <input type="checkbox" />
+            <input type="checkbox" checked={filters.companies.includes('Hạnh Cafe')} onChange={() => toggleFilter('companies', 'Hạnh Cafe')} />
             <span>Hạnh Cafe</span>
           </label>
           <label className="checkbox-label">
-            <input type="checkbox" />
+            <input type="checkbox" checked={filters.companies.includes('Thaco')} onChange={() => toggleFilter('companies', 'Thaco')} />
             <span>Thaco</span>
           </label>
         </div>
@@ -67,7 +70,7 @@ const FilterSidebar = () => {
         <h3>Đánh giá</h3>
         <div className="checkbox-group">
           <label className="checkbox-label">
-            <input type="checkbox" />
+            <input type="checkbox" checked={filters.ratings.includes(5)} onChange={() => toggleFilter('ratings', 5)} />
             <span style={{color: '#F59E0B'}}>
               <i className="bi bi-star-fill"></i>
               <i className="bi bi-star-fill"></i>
@@ -78,7 +81,7 @@ const FilterSidebar = () => {
             </span>
           </label>
           <label className="checkbox-label">
-            <input type="checkbox" />
+            <input type="checkbox" checked={filters.ratings.includes(4)} onChange={() => toggleFilter('ratings', 4)} />
             <span style={{color: '#F59E0B'}}>
               <i className="bi bi-star-fill"></i>
               <i className="bi bi-star-fill"></i>
@@ -89,7 +92,7 @@ const FilterSidebar = () => {
             </span>
           </label>
           <label className="checkbox-label">
-            <input type="checkbox" />
+            <input type="checkbox" checked={filters.ratings.includes(3)} onChange={() => toggleFilter('ratings', 3)} />
             <span style={{color: '#F59E0B'}}>
               <i className="bi bi-star-fill"></i>
               <i className="bi bi-star-fill"></i>
