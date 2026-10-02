@@ -1,5 +1,4 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const TripCard = ({ trip }) => {
   const navigate = useNavigate();
@@ -14,7 +13,7 @@ const TripCard = ({ trip }) => {
         <div>
           <div className="trip-company-info">
             <div>
-              <div className="company-name">{trip.company}</div>
+              <Link className="company-name trip-company-link" to={`/trips/${trip.id}`}>{trip.company}</Link>
               <div className="bus-type">{trip.busType}</div>
             </div>
             <div className="trip-rating">
