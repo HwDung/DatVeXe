@@ -3,7 +3,7 @@ import SearchHeader from '../components/search/SearchHeader';
 import FilterSidebar from '../components/search/FilterSidebar';
 import TripCard from '../components/search/TripCard';
 import '../styles/search.css';
-
+/////
 const SearchPage = () => {
   const trips = [
     {
