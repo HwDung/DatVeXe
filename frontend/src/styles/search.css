@@ -196,6 +196,12 @@
   gap: 10px;
 }
 
+.trip-company-link:hover {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .bus-type {
   font-size: 14px;
   color: var(--text-light);

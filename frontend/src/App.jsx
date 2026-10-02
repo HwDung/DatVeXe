@@ -5,6 +5,7 @@ import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import HomePage from './pages/HomePage';
 import SearchPage from './pages/SearchPage';
+import TripDetailPage from './pages/TripDetailPage';
 import SeatSelectionPage from './pages/SeatSelectionPage';
 import PassengerInfoPage from './pages/PassengerInfoPage';
 import PaymentPage from './pages/PaymentPage';
@@ -32,6 +33,7 @@ function MainLayout() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/search" element={<SearchPage />} />
+          <Route path="/trips/:tripId" element={<TripDetailPage />} />
           <Route
             path="/booking/seats"
             element={(
