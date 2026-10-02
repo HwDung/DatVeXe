@@ -9,11 +9,13 @@ const AdminLayout = ({ children }) => {
   const { user, logout } = useAuth();
 
   const handleLogout = async () => {
-    await logout();
+    if (logout) {
+      await logout();
+    }
     navigate('/login', { replace: true });
   };
 
-  const displayName = user?.fullName || user?.email || 'Admin';
+  const displayName = user?.fullName || user?.email || 'Quản trị viên';
   const avatarLetter = displayName.charAt(0).toUpperCase();
 
   const getPageTitle = () => {
@@ -66,7 +68,7 @@ const AdminLayout = ({ children }) => {
         </nav>
 
         <div className="admin-sidebar-footer">
-          <button onClick={handleLogout}>
+          <button type="button" onClick={handleLogout}>
             <i className="bi bi-box-arrow-left"></i> Đăng xuất
           </button>
         </div>

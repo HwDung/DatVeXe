@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 
 const AdminBookings = () => {
   const [bookings, setBookings] = useState([
-    { id: 'BK1001', passenger: 'Nguyễn Văn A', phone: '0901234567', route: 'Hà Nội - Sapa', date: '2023-11-20', seats: 'A1, A2', price: 700000, payment: 'Đã thanh toán', status: 'Đã xác nhận' },
-    { id: 'BK1002', passenger: 'Trần Thị B', phone: '0912345678', route: 'TP.HCM - Đà Lạt', date: '2023-11-21', seats: 'B4', price: 250000, payment: 'Chưa thanh toán', status: 'Chờ xử lý' },
+    { id: 'BK1001', passenger: 'Nguyễn Văn A', phone: '0901234567', route: 'Hà Nội - Sapa', date: '20/11/2025', seats: 'A1, A2', price: 700000, payment: 'Đã thanh toán', status: 'Đã xác nhận' },
+    { id: 'BK1002', passenger: 'Trần Thị B', phone: '0912345678', route: 'TP.HCM - Đà Lạt', date: '21/11/2025', seats: 'B4', price: 250000, payment: 'Chưa thanh toán', status: 'Chờ xử lý' },
+    { id: 'BK1003', passenger: 'Lê Văn C', phone: '0988776655', route: 'Đà Nẵng - Huế', date: '22/11/2025', seats: 'C3', price: 150000, payment: 'Đã hoàn tiền', status: 'Đã hủy' },
   ]);
 
   const [filterStatus, setFilterStatus] = useState('');
@@ -64,7 +65,7 @@ const AdminBookings = () => {
                   <td>{b.seats}</td>
                   <td>{new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(b.price)}</td>
                   <td>
-                    <span className={b.payment === 'Đã thanh toán' ? 'text-success' : 'text-warning'}>
+                    <span style={{ fontWeight: 600, color: b.payment === 'Đã thanh toán' ? '#059669' : '#D97706' }}>
                       {b.payment}
                     </span>
                   </td>
@@ -73,11 +74,11 @@ const AdminBookings = () => {
                     <div className="action-buttons">
                       {b.status === 'Chờ xử lý' && (
                         <>
-                          <button className="btn btn-primary btn-sm" onClick={() => handleUpdateStatus(b.id, 'Đã xác nhận')}>Duyệt</button>
-                          <button className="btn btn-secondary btn-sm" onClick={() => handleUpdateStatus(b.id, 'Đã hủy')}>Hủy</button>
+                          <button type="button" className="btn btn-primary btn-sm" onClick={() => handleUpdateStatus(b.id, 'Đã xác nhận')}>Duyệt</button>
+                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => handleUpdateStatus(b.id, 'Đã hủy')}>Hủy</button>
                         </>
                       )}
-                      <button className="btn-icon edit" title="Chi tiết"><i className="bi bi-eye"></i></button>
+                      <button type="button" className="btn-icon edit" title="Chi tiết"><i className="bi bi-eye"></i></button>
                     </div>
                   </td>
                 </tr>
