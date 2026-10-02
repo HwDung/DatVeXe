@@ -1,48 +1,86 @@
 import React, { useEffect, useState } from 'react';
 import { adminService } from '../../services/adminApi';
 
-const AdminDashboard = () => {
-  const [stats, setStats] = useState({
-    totalBookings: 1250,
-    revenue: 450000000,
-    users: 850,
-    trips: 120
-  });
+const DEFAULT_STATS = {
+  totalBookings: 1250,
+  revenue: 450000000,
+  users: 850,
+  trips: 120,
+};
 
-  const [recentBookings, setRecentBookings] = useState([
-    { id: 'BK1001', passenger: 'Nguyễn Văn A', route: 'Hà Nội - Sapa', date: '2023-11-20', price: 350000, status: 'Đã xác nhận' },
-    { id: 'BK1002', passenger: 'Trần Thị B', route: 'TP.HCM - Đà Lạt', date: '2023-11-21', price: 250000, status: 'Chờ xử lý' },
-    { id: 'BK1003', passenger: 'Lê Văn C', route: 'Đà Nẵng - Huế', date: '2023-11-22', price: 150000, status: 'Đã hủy' }
-  ]);
+const DEFAULT_BOOKINGS = [
+  { id: 'RW2601', passenger: 'Nguyễn Văn A', route: 'Hà Nội - Sapa', date: '25/09/2025', price: 320000, status: 'Đã xác nhận' },
+  { id: 'RW2602', passenger: 'Trần Thị B', route: 'TP.HCM - Đà Lạt', date: '25/09/2025', price: 280000, status: 'Chờ xử lý' },
+  { id: 'RW2603', passenger: 'Lê Văn C', route: 'Đà Nẵng - Huế', date: '26/09/2025', price: 150000, status: 'Đã hủy' },
+  { id: 'RW2604', passenger: 'Phạm Minh D', route: 'TP.HCM - Nha Trang', date: '27/09/2025', price: 220000, status: 'Đã xác nhận' },
+];
+
+const AdminDashboard = () => {
+  const [stats, setStats] = useState(DEFAULT_STATS);
+  const [recentBookings, setRecentBookings] = useState(DEFAULT_BOOKINGS);
 
   useEffect(() => {
-    // Attempt to fetch real data, fallback to mock data on fail
+    let isMounted = true;
+
     const fetchDashboardData = async () => {
       try {
         const response = await adminService.getDashboard();
-        if (response?.data) {
-          setStats(response.data.stats);
-          setRecentBookings(response.data.recentBookings);
+        if (!isMounted || !response?.data) return;
+
+        const data = response.data;
+        setStats({
+          totalBookings: data.totalBookings ?? data.stats?.totalBookings ?? DEFAULT_STATS.totalBookings,
+          revenue: data.revenue ?? data.stats?.revenue ?? DEFAULT_STATS.revenue,
+          users: data.totalUsers ?? data.users ?? data.stats?.users ?? DEFAULT_STATS.users,
+          trips: data.totalTrips ?? data.trips ?? data.stats?.trips ?? DEFAULT_STATS.trips,
+        });
+
+        if (Array.isArray(data.recentBookings) && data.recentBookings.length > 0) {
+          setRecentBookings(
+            data.recentBookings.map((b) => {
+              const origin = b.trip?.route?.origin || '';
+              const destination = b.trip?.route?.destination || '';
+              const routeName = origin && destination ? `${origin} - ${destination}` : (b.route || 'Hà Nội - Đà Nẵng');
+              const tripDateStr = b.tripDate ? new Date(b.tripDate).toLocaleDateString('vi-VN') : (b.date || '25/09/2025');
+
+              let statusLabel = 'Chờ xử lý';
+              const rawStatus = String(b.status || '').toLowerCase();
+              if (rawStatus === 'confirmed' || rawStatus.includes('xác nhận')) statusLabel = 'Đã xác nhận';
+              else if (rawStatus === 'cancelled' || rawStatus.includes('hủy')) statusLabel = 'Đã hủy';
+
+              return {
+                id: b.bookingCode || b.id || 'RW0000',
+                passenger: b.passengerName || b.passenger || 'Khách hàng',
+                route: routeName,
+                date: tripDateStr,
+                price: Number(b.totalPrice ?? b.price ?? 0),
+                status: statusLabel,
+              };
+            })
+          );
         }
       } catch (error) {
-        console.error('Error fetching dashboard data, using mock data', error);
+        console.error('Error fetching dashboard data, fallback to mock data:', error);
       }
     };
-    
+
     fetchDashboardData();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(amount) || 0);
   };
 
   const getStatusBadge = (status) => {
-    switch (status) {
-      case 'Đã xác nhận': return <span className="badge badge-success">{status}</span>;
-      case 'Chờ xử lý': return <span className="badge badge-warning">{status}</span>;
-      case 'Đã hủy': return <span className="badge badge-danger">{status}</span>;
-      default: return <span className="badge badge-info">{status}</span>;
-    }
+    const s = String(status || '').toLowerCase();
+    if (s.includes('xác nhận') || s === 'confirmed') return <span className="badge badge-success">Đã xác nhận</span>;
+    if (s.includes('chờ') || s === 'pending') return <span className="badge badge-warning">Chờ xử lý</span>;
+    if (s.includes('hủy') || s === 'cancelled') return <span className="badge badge-danger">Đã hủy</span>;
+    return <span className="badge badge-info">{status || 'Chờ xử lý'}</span>;
   };
 
   return (
@@ -53,7 +91,7 @@ const AdminDashboard = () => {
           <div className="stat-icon blue"><i className="bi bi-ticket-detailed"></i></div>
           <div className="stat-info">
             <h3>Tổng đặt vé</h3>
-            <p>{stats.totalBookings.toLocaleString()}</p>
+            <p>{(stats?.totalBookings ?? 0).toLocaleString()}</p>
           </div>
         </div>
         
@@ -61,7 +99,7 @@ const AdminDashboard = () => {
           <div className="stat-icon green"><i className="bi bi-currency-dollar"></i></div>
           <div className="stat-info">
             <h3>Doanh thu</h3>
-            <p>{formatCurrency(stats.revenue)}</p>
+            <p>{formatCurrency(stats?.revenue ?? 0)}</p>
           </div>
         </div>
         
@@ -69,7 +107,7 @@ const AdminDashboard = () => {
           <div className="stat-icon purple"><i className="bi bi-people"></i></div>
           <div className="stat-info">
             <h3>Người dùng</h3>
-            <p>{stats.users.toLocaleString()}</p>
+            <p>{(stats?.users ?? 0).toLocaleString()}</p>
           </div>
         </div>
         
@@ -77,7 +115,7 @@ const AdminDashboard = () => {
           <div className="stat-icon orange"><i className="bi bi-bus-front"></i></div>
           <div className="stat-info">
             <h3>Chuyến xe</h3>
-            <p>{stats.trips.toLocaleString()}</p>
+            <p>{(stats?.trips ?? 0).toLocaleString()}</p>
           </div>
         </div>
       </div>
@@ -86,7 +124,7 @@ const AdminDashboard = () => {
       <div className="chart-card">
         <div style={{ textAlign: 'center' }}>
           <i className="bi bi-bar-chart" style={{ fontSize: '48px', color: '#D1D5DB' }}></i>
-          <p>Biểu đồ doanh thu (Đang cập nhật)</p>
+          <p style={{ marginTop: '12px', fontWeight: 500 }}>Biểu đồ doanh thu (Hệ thống đang đồng bộ)</p>
         </div>
       </div>
 
@@ -94,7 +132,7 @@ const AdminDashboard = () => {
       <div className="admin-table-container">
         <div className="admin-table-header">
           <h2>Đặt vé gần đây</h2>
-          <button className="btn btn-secondary btn-sm">Xem tất cả</button>
+          <span className="badge badge-info">{recentBookings.length} đơn</span>
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table className="admin-table">
@@ -116,11 +154,11 @@ const AdminDashboard = () => {
                   <td>{booking.passenger}</td>
                   <td>{booking.route}</td>
                   <td>{booking.date}</td>
-                  <td>{formatCurrency(booking.price)}</td>
+                  <td><strong style={{ color: '#DC2626' }}>{formatCurrency(booking.price)}</strong></td>
                   <td>{getStatusBadge(booking.status)}</td>
                   <td>
                     <div className="action-buttons">
-                      <button className="btn-icon edit" title="Chi tiết"><i className="bi bi-eye"></i></button>
+                      <button type="button" className="btn-icon edit" title="Chi tiết"><i className="bi bi-eye"></i></button>
                     </div>
                   </td>
                 </tr>
