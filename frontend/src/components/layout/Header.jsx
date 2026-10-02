@@ -12,13 +12,13 @@ const Header = () => {
     { name: 'Trang chủ', path: '/' },
     { name: 'Tìm vé', path: '/search' },
     { name: 'Tra cứu vé', path: '/lookup' },
-    { name: 'Chuyến đi', path: '#' },
+    { name: 'Chuyến đi', path: '/search' },
     { name: 'Ưu đãi', path: '#' },
     { name: 'Tin tức', path: '#' },
   ];
 
   const handleLogout = async () => {
-    await logout();
+    if (logout) await logout();
     navigate('/');
   };
 
@@ -57,7 +57,7 @@ const Header = () => {
               <span>Đăng nhập / Đăng ký</span>
             </Link>
           )}
-          <button type="button" className="lang-btn">
+          <button type="button" className="lang-btn" aria-label="Ngôn ngữ">
             <i className="bi bi-globe"></i>
           </button>
         </div>

@@ -6,7 +6,7 @@ import '../styles/auth.css';
 function getErrorMessage(error) {
   return error?.response?.data?.error?.message
     || error?.response?.data?.message
-    || 'Đăng nhập thất bại. Vui lòng thử lại.';
+    || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.';
 }
 
 const LoginPage = () => {
@@ -55,7 +55,7 @@ const LoginPage = () => {
             <input
               id="login-email"
               type="email"
-              placeholder="Nhập email"
+              placeholder="Nhập email (VD: admin@rightway.com)"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               required
@@ -68,7 +68,7 @@ const LoginPage = () => {
             <input
               id="login-password"
               type="password"
-              placeholder="Nhập mật khẩu"
+              placeholder="Nhập mật khẩu (VD: Admin@123)"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
