@@ -24,6 +24,16 @@ function errorHandler(error, _request, response, _next) {
     return;
   }
 
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") {
+    response.status(404).json({ error: { code: "NOT_FOUND", message: "Resource not found" } });
+    return;
+  }
+
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+    response.status(409).json({ error: { code: "CONSTRAINT_CONFLICT", message: "Resource is referenced by another record" } });
+    return;
+  }
+
   console.error(error);
   response.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Internal server error" } });
 }
