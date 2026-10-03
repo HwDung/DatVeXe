@@ -2,10 +2,12 @@ const { Router } = require("express");
 const { prisma } = require("../../lib/prisma");
 const { authenticate } = require("../../middleware/authenticate");
 const { requireRole } = require("../../middleware/authorization");
+const { busesRouter } = require("./buses.routes");
 
 const adminRouter = Router();
 
 adminRouter.use(authenticate, requireRole("admin"));
+adminRouter.use("/buses", busesRouter);
 
 async function getDashboardStats(_req, res) {
   try {
