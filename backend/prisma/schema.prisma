@@ -101,8 +101,25 @@ model Route {
   distance    Int?     // km
   createdAt   DateTime @default(now())
   trips       Trip[]
+  stops       RouteStop[]
 
   @@unique([origin, destination])
+}
+
+model RouteStop {
+  id        String   @id @default(cuid()) @db.NVarChar(30)
+  routeId   String   @db.NVarChar(30)
+  type      String   @db.NVarChar(10) // pickup, dropoff
+  name      String   @db.NVarChar(150)
+  address   String   @db.NVarChar(300)
+  city      String   @db.NVarChar(100)
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  route     Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@index([routeId, type, sortOrder])
 }
 
 model Trip {
