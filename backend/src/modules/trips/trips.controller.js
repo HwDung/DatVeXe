@@ -1,12 +1,13 @@
 const service = require("./trips.service");
+const { tripSearchSchema } = require("./trips.schemas");
 
-async function searchTrips(req, res) {
+async function searchTrips(req, res, next) {
   try {
-    const trips = await service.searchTripsService(req.query);
+    const query = tripSearchSchema.parse(req.query);
+    const trips = await service.searchTripsService(query);
     res.json(trips);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal server error" });
+    next(error);
   }
 }
 
