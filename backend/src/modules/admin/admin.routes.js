@@ -122,7 +122,7 @@ adminRouter.delete("/trips/:id", async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 });
-
+//
 const crudHandler = (model, includes) => ({
   list: async (_req, res) => {
     try {
