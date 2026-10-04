@@ -3,11 +3,19 @@ const { prisma } = require("../../lib/prisma");
 const { authenticate } = require("../../middleware/authenticate");
 const { requireRole } = require("../../middleware/authorization");
 const { tripScheduleRouter } = require("./trip-schedule.routes");
+const { tripManagementRouter } = require("./trip-management.routes");
+const { pickupDropoffPointsRouter } = require("./pickup-dropoff-points.routes");
+const { routeManagementRouter } = require("./route-management.routes");
+const { busesRouter } = require("./buses.routes");
 
 const adminRouter = Router();
 
 adminRouter.use(authenticate, requireRole("admin"));
 adminRouter.use("/trips", tripScheduleRouter);
+adminRouter.use("/trips", tripManagementRouter);
+adminRouter.use("/pickup-dropoff-points", pickupDropoffPointsRouter);
+adminRouter.use("/routes", routeManagementRouter);
+adminRouter.use("/buses", busesRouter);
 
 async function getDashboardStats(_req, res) {
   try {
@@ -67,62 +75,6 @@ adminRouter.patch("/bookings/:id/status", async (req, res) => {
   }
 });
 
-adminRouter.get("/trips", async (_req, res) => {
-  try {
-    const trips = await prisma.trip.findMany({
-      include: { route: true, bus: true, company: true },
-      orderBy: { createdAt: "desc" },
-    });
-    res.json(trips);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
-adminRouter.get("/trips/:id", async (req, res) => {
-  try {
-    const trip = await prisma.trip.findUnique({
-      where: { id: req.params.id },
-      include: { route: true, bus: true, company: true },
-    });
-    res.json(trip);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
-adminRouter.post("/trips", async (req, res) => {
-  try {
-    const trip = await prisma.trip.create({ data: req.body });
-    res.json(trip);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
-adminRouter.put("/trips/:id", async (req, res) => {
-  try {
-    const trip = await prisma.trip.update({ where: { id: req.params.id }, data: req.body });
-    res.json(trip);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
-adminRouter.delete("/trips/:id", async (req, res) => {
-  try {
-    await prisma.trip.delete({ where: { id: req.params.id } });
-    res.json({ success: true });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
 const crudHandler = (model, includes) => ({
   list: async (_req, res) => {
     try {
@@ -168,7 +120,6 @@ const crudHandler = (model, includes) => ({
 });
 
 const genericModels = [
-  { name: "routes", model: prisma.route, includes: undefined },
   { name: "companies", model: prisma.busCompany, includes: { buses: true } },
   { name: "bookings", model: prisma.booking, includes: { trip: { include: { route: true, company: true } } } },
   { name: "promotions", model: prisma.promotion, includes: undefined },
