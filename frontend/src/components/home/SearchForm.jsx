@@ -1,12 +1,22 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const SearchForm = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [origin, setOrigin] = useState(searchParams.get('origin') || 'Hà Nội');
+  const [destination, setDestination] = useState(searchParams.get('destination') || '');
+  const [date, setDate] = useState(searchParams.get('date') || '');
+  const [passengers, setPassengers] = useState(searchParams.get('passengers') || '1');
 
   const handleSearch = (e) => {
     e.preventDefault();
-    navigate('/search');
+    const params = new URLSearchParams();
+    if (origin.trim()) params.set('origin', origin.trim());
+    if (destination.trim()) params.set('destination', destination.trim());
+    if (date) params.set('date', date);
+    params.set('passengers', passengers);
+    navigate(`/search?${params.toString()}`);
   };
 
   return (
@@ -15,7 +25,7 @@ const SearchForm = () => {
         <i className="bi bi-geo-alt"></i>
         <div style={{width: '100%', position: 'relative'}}>
           <label>Từ</label>
-          <input type="text" placeholder="Nhập điểm đi" style={{paddingTop: '16px'}} defaultValue="Hà Nội" />
+          <input type="text" placeholder="Nhập điểm đi" style={{paddingTop: '16px'}} value={origin} onChange={(event) => setOrigin(event.target.value)} />
         </div>
       </div>
       
@@ -23,7 +33,7 @@ const SearchForm = () => {
         <i className="bi bi-geo-alt-fill"></i>
         <div style={{width: '100%', position: 'relative'}}>
           <label>Đến</label>
-          <input type="text" placeholder="Nhập điểm đến ví dụ Đà Nẵng" style={{paddingTop: '16px'}} />
+          <input type="text" placeholder="Nhập điểm đến ví dụ Đà Nẵng" style={{paddingTop: '16px'}} value={destination} onChange={(event) => setDestination(event.target.value)} />
         </div>
       </div>
       
@@ -31,7 +41,7 @@ const SearchForm = () => {
         <i className="bi bi-calendar-event"></i>
         <div style={{width: '100%', position: 'relative'}}>
           <label>Ngày đi</label>
-          <input type="text" placeholder="25/09/2025" style={{paddingTop: '16px'}} defaultValue="25/09/2025" />
+          <input type="date" style={{paddingTop: '16px'}} value={date} onChange={(event) => setDate(event.target.value)} />
         </div>
       </div>
       
@@ -39,7 +49,7 @@ const SearchForm = () => {
         <i className="bi bi-person"></i>
         <div style={{width: '100%', position: 'relative'}}>
           <label>Số hành khách</label>
-          <select style={{paddingTop: '16px'}}>
+          <select style={{paddingTop: '16px'}} value={passengers} onChange={(event) => setPassengers(event.target.value)}>
             <option value="1">1 người</option>
             <option value="2">2 người</option>
             <option value="3">3 người</option>
