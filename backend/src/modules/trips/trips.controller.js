@@ -1,5 +1,6 @@
 const service = require("./trips.service");
 const { tripSearchSchema } = require("./trips.schemas");
+const { tripIdSchema } = require("./trip-detail.schemas");
 
 async function searchTrips(req, res, next) {
   try {
@@ -11,16 +12,13 @@ async function searchTrips(req, res, next) {
   }
 }
 
-async function getTripById(req, res) {
+async function getTripById(req, res, next) {
   try {
-    const trip = await service.getTripByIdService(req.params.id);
-    if (!trip) {
-      return res.status(404).json({ message: "Trip not found" });
-    }
+    const id = tripIdSchema.parse(req.params.id);
+    const trip = await service.getTripByIdService(id);
     res.json(trip);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal server error" });
+    next(error);
   }
 }
 

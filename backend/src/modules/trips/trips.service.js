@@ -1,4 +1,5 @@
 const { prisma } = require("../../lib/prisma");
+const { HttpError } = require("../../utils/http-error");
 
 async function searchTripsService(query) {
   const { origin, destination, date, minPrice, maxPrice, companies, rating, departurePeriods, sort } = query;
@@ -64,8 +65,8 @@ async function searchTripsService(query) {
   });
 }
 
-function getTripByIdService(id) {
-  return prisma.trip.findUnique({
+async function getTripByIdService(id) {
+  const trip = await prisma.trip.findUnique({
     where: { id },
     include: {
       route: true,
@@ -73,6 +74,10 @@ function getTripByIdService(id) {
       company: true,
     },
   });
+  if (!trip) {
+    throw new HttpError(404, "TRIP_NOT_FOUND", "Trip not found");
+  }
+  return trip;
 }
 
 function getTripSeatsService(id, dateStr) {
