@@ -2,12 +2,14 @@ const { Router } = require("express");
 const { prisma } = require("../../lib/prisma");
 const { authenticate } = require("../../middleware/authenticate");
 const { requireRole } = require("../../middleware/authorization");
+const { pickupDropoffPointsRouter } = require("./pickup-dropoff-points.routes");
 const { routeManagementRouter } = require("./route-management.routes");
 const { busesRouter } = require("./buses.routes");
 
 const adminRouter = Router();
 
 adminRouter.use(authenticate, requireRole("admin"));
+adminRouter.use("/pickup-dropoff-points", pickupDropoffPointsRouter);
 adminRouter.use("/routes", routeManagementRouter);
 adminRouter.use("/buses", busesRouter);
 
