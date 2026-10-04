@@ -1,10 +1,10 @@
-# 🚌 Rightway - Hệ thống Đặt Vé Xe Trực Tuyến & Trang Quản Trị Admin
+# Rightway - Hệ thống Đặt Vé Xe Trực Tuyến & Trang Quản Trị Admin
 
 Dự án fullstack đặt vé xe khách Rightway gồm **Backend Express (JavaScript + Prisma + SQL Server)** và **Frontend React (Vite + React Router)** mô phỏng sát 100% thiết kế giao diện Figma, kèm theo **Trang Quản trị Admin**.
 
 ---
 
-## 📸 Tổng quan giao diện
+## Tổng quan giao diện
 
 1. **Trang chủ (`/`)**:
    - Hero banner "Hành trình đẹp hơn cùng Rightway", các huy hiệu bảo đảm dịch vụ.
@@ -36,9 +36,10 @@ Dự án fullstack đặt vé xe khách Rightway gồm **Backend Express (JavaSc
    - Quản lý tin tức (`/admin/news`)
    - Quản lý người dùng (`/admin/users`)
 
+
 ---
 
-## 🛠️ Cài đặt & Khởi chạy
+## Cài đặt & Khởi chạy
 
 ### 1. Yêu cầu môi trường
 - **Node.js**: v20+
