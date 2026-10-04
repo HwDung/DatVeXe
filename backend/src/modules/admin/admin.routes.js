@@ -3,11 +3,13 @@ const { prisma } = require("../../lib/prisma");
 const { authenticate } = require("../../middleware/authenticate");
 const { requireRole } = require("../../middleware/authorization");
 const { routeManagementRouter } = require("./route-management.routes");
+const { busesRouter } = require("./buses.routes");
 
 const adminRouter = Router();
 
 adminRouter.use(authenticate, requireRole("admin"));
 adminRouter.use("/routes", routeManagementRouter);
+adminRouter.use("/buses", busesRouter);
 
 async function getDashboardStats(_req, res) {
   try {
