@@ -1,39 +1,57 @@
 const { prisma } = require("../../lib/prisma");
 
 async function searchTripsService(query) {
-  const { origin, destination, date, minPrice, maxPrice, companies, rating, sort } = query;
+  const { origin, destination, date, minPrice, maxPrice, companies, rating, departurePeriods, sort } = query;
 
   const whereClause = { isActive: true };
-  if (origin) whereClause.route = { ...whereClause.route, origin };
-  if (destination) whereClause.route = { ...whereClause.route, destination };
-  if (date) {
-    const queryDate = new Date(date);
-    whereClause.OR = [
-      { availableDate: queryDate },
-      { availableDate: null },
-    ];
+  if (origin || destination) {
+    whereClause.route = {};
+    if (origin) whereClause.route.origin = origin;
+    if (destination) whereClause.route.destination = destination;
   }
 
-  if (minPrice || maxPrice) {
+  if (minPrice !== undefined || maxPrice !== undefined) {
     whereClause.price = {};
-    if (minPrice) whereClause.price.gte = parseInt(minPrice, 10);
-    if (maxPrice) whereClause.price.lte = parseInt(maxPrice, 10);
+    if (minPrice !== undefined) whereClause.price.gte = minPrice;
+    if (maxPrice !== undefined) whereClause.price.lte = maxPrice;
   }
 
-  if (companies) {
-    const companyNames = companies.split(",");
-    whereClause.company = { name: { in: companyNames } };
+  const companyFilter = {};
+  if (companies?.length) companyFilter.name = { in: companies };
+  if (rating !== undefined) companyFilter.rating = { gte: rating };
+  if (Object.keys(companyFilter).length) whereClause.company = companyFilter;
+
+  const andConditions = [];
+  if (date) {
+    andConditions.push({
+      OR: [
+        { availableDate: date },
+        { availableDate: null },
+      ],
+    });
   }
 
-  if (rating) {
-    whereClause.company = { ...whereClause.company, rating: { gte: parseFloat(rating) } };
+  if (departurePeriods?.length) {
+    const departureRanges = {
+      early: { lt: "06:00" },
+      morning: { gte: "06:00", lt: "12:00" },
+      afternoon: { gte: "12:00", lt: "18:00" },
+      evening: { gte: "18:00" },
+    };
+    andConditions.push({
+      OR: departurePeriods.map((period) => ({ departureTime: departureRanges[period] })),
+    });
   }
 
-  let orderBy = {};
-  if (sort === "price_asc") orderBy = { price: "asc" };
-  else if (sort === "price_desc") orderBy = { price: "desc" };
-  else if (sort === "departure_asc") orderBy = { departureTime: "asc" };
-  else if (sort === "rating_desc") orderBy = { company: { rating: "desc" } };
+  if (andConditions.length) whereClause.AND = andConditions;
+
+  const sortOptions = {
+    price_asc: { price: "asc" },
+    price_desc: { price: "desc" },
+    departure_asc: { departureTime: "asc" },
+    departure_desc: { departureTime: "desc" },
+    rating_desc: { company: { rating: "desc" } },
+  };
 
   return prisma.trip.findMany({
     where: whereClause,
@@ -42,7 +60,7 @@ async function searchTripsService(query) {
       bus: true,
       company: true,
     },
-    orderBy: Object.keys(orderBy).length ? orderBy : undefined,
+    orderBy: sortOptions[sort] || { departureTime: "asc" },
   });
 }
 
