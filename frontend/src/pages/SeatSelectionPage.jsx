@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import BookingSteps from '../components/booking/BookingSteps';
 import SearchHeader from '../components/search/SearchHeader';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import '../styles/booking.css';
 
 const SeatSelectionPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [activeFloor, setActiveFloor] = useState('lower');
   const [selectedSeats, setSelectedSeats] = useState([]);
 
@@ -49,7 +50,7 @@ const SeatSelectionPage = () => {
   return (
     <div className="booking-page">
       <BookingSteps currentStep={2} />
-      <SearchHeader />
+      <SearchHeader passengers={searchParams.get('passengers') || '1'} searchParams={searchParams} />
       
       <div className="container booking-layout" style={{marginTop: '30px'}}>
         <div className="booking-main">
