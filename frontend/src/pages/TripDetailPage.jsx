@@ -1,18 +1,85 @@
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import trips from '../data/trips';
+import { tripService } from '../services/api';
 import '../styles/trip-detail.css';
 
 const TripDetailPage = () => {
   const { tripId } = useParams();
   const navigate = useNavigate();
-  const trip = trips.find((item) => item.id === Number(tripId));
+  const [result, setResult] = useState({ key: '', loading: true, trip: null, notFound: false, error: '' });
 
-  if (!trip) {
+  useEffect(() => {
+    let isCurrentRequest = true;
+
+    tripService.getById(tripId)
+      .then(({ data }) => {
+        if (!isCurrentRequest) return;
+        setResult({
+          key: tripId,
+          loading: false,
+          trip: {
+            id: data.id,
+            company: data.company?.name || 'Nhà xe',
+            busType: data.bus?.type || 'Thông tin xe chưa cập nhật',
+            rating: Number(data.company?.rating ?? 0),
+            reviews: Number(data.company?.totalReviews ?? 0),
+            departureTime: data.departureTime,
+            origin: data.route?.origin || '',
+            arrivalTime: data.arrivalTime,
+            destination: data.route?.destination || '',
+            duration: data.duration,
+            seatsAvailable: null,
+            price: `${Number(data.price).toLocaleString('vi-VN')}đ`,
+            amenities: Array.isArray(data.amenities) ? data.amenities : [],
+          },
+          notFound: false,
+          error: '',
+        });
+      })
+      .catch((requestError) => {
+        if (!isCurrentRequest) return;
+        const isNotFound = requestError.response?.status === 404;
+        setResult({
+          key: tripId,
+          loading: false,
+          trip: null,
+          notFound: isNotFound,
+          error: isNotFound ? '' : requestError.response?.data?.message || 'Không thể tải thông tin chuyến xe. Vui lòng thử lại.',
+        });
+      });
+
+    return () => {
+      isCurrentRequest = false;
+    };
+  }, [tripId]);
+
+  const currentResult = result.key === tripId ? result : null;
+  const isLoading = !currentResult || currentResult.loading;
+  const trip = currentResult?.trip;
+
+  if (isLoading) {
+    return (
+      <section className="container trip-not-found" role="status">
+        <p>Đang tải thông tin chuyến xe...</p>
+      </section>
+    );
+  }
+
+  if (currentResult.notFound) {
     return (
       <section className="container trip-not-found">
         <i className="bi bi-signpost-split" aria-hidden="true"></i>
         <h1>Không tìm thấy chuyến xe</h1>
         <p>Chuyến xe có thể đã bị gỡ hoặc đường dẫn không hợp lệ.</p>
+        <Link className="btn-primary" to="/search">Quay lại tìm chuyến</Link>
+      </section>
+    );
+  }
+
+  if (currentResult.error || !trip) {
+    return (
+      <section className="container trip-not-found">
+        <p role="alert">{currentResult.error || 'Không thể tải thông tin chuyến xe.'}</p>
         <Link className="btn-primary" to="/search">Quay lại tìm chuyến</Link>
       </section>
     );
@@ -30,7 +97,7 @@ const TripDetailPage = () => {
       <main className="container trip-detail-container">
         <header className="trip-detail-heading">
           <div>
-            <p className="trip-detail-eyebrow">CHUYẾN XE ĐI ĐÀ LẠT</p>
+            <p className="trip-detail-eyebrow">CHUYẾN XE {trip.origin} - {trip.destination}</p>
             <h1>{trip.company}</h1>
             <p className="trip-detail-subtitle">{trip.busType}</p>
           </div>
@@ -72,7 +139,7 @@ const TripDetailPage = () => {
               <dl className="trip-info-list">
                 <div><dt>Nhà xe</dt><dd>{trip.company}</dd></div>
                 <div><dt>Dòng xe</dt><dd>{trip.busType}</dd></div>
-                <div><dt>Số chỗ còn trống</dt><dd>{trip.seatsAvailable} chỗ</dd></div>
+                <div><dt>Số chỗ còn trống</dt><dd>{trip.seatsAvailable == null ? 'Kiểm tra khi chọn chỗ' : `${trip.seatsAvailable} chỗ`}</dd></div>
                 <div><dt>Đánh giá</dt><dd><i className="bi bi-star-fill" aria-hidden="true"></i> {trip.rating} / 5 ({trip.reviews.toLocaleString('vi-VN')} đánh giá)</dd></div>
               </dl>
             </section>
@@ -80,7 +147,9 @@ const TripDetailPage = () => {
             <section className="trip-detail-section">
               <div className="trip-section-heading"><h2>Tiện ích trên xe</h2></div>
               <ul className="trip-amenities">
-                {trip.amenities.map((amenity) => <li key={amenity}><i className="bi bi-check2" aria-hidden="true"></i>{amenity}</li>)}
+                {trip.amenities.length
+                  ? trip.amenities.map((amenity) => <li key={amenity}><i className="bi bi-check2" aria-hidden="true"></i>{amenity}</li>)
+                  : <li>Thông tin tiện ích chưa được cập nhật.</li>}
               </ul>
             </section>
 
@@ -96,7 +165,7 @@ const TripDetailPage = () => {
             <div className="trip-booking-summary">
               <div><span>Khởi hành</span><strong>{trip.departureTime}</strong></div>
               <div><span>Thời gian</span><strong>{trip.duration}</strong></div>
-              <div><span>Còn trống</span><strong>{trip.seatsAvailable} chỗ</strong></div>
+              <div><span>Còn trống</span><strong>{trip.seatsAvailable == null ? 'Kiểm tra khi chọn chỗ' : `${trip.seatsAvailable} chỗ`}</strong></div>
             </div>
             <button className="btn-primary trip-book-button" type="button" onClick={() => navigate('/booking/seats', { state: { trip } })}>
               Chọn chuyến này <i className="bi bi-arrow-right" aria-hidden="true"></i>
