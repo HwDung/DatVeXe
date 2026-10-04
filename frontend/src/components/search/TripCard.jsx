@@ -40,7 +40,9 @@ const TripCard = ({ trip }) => {
         
         <div className="trip-footer">
           <div className="seats-left">
-            <span style={{color: 'var(--primary)', fontWeight: 600}}>{trip.seatsAvailable} chỗ trống</span>
+            <span style={{color: 'var(--primary)', fontWeight: 600}}>
+              {trip.seatsAvailable == null ? 'Kiểm tra chỗ' : `${trip.seatsAvailable} chỗ trống`}
+            </span>
           </div>
           <div className="price-info">
             <div className="price-label">giá vé từ</div>
