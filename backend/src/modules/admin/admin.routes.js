@@ -2,11 +2,13 @@ const { Router } = require("express");
 const { prisma } = require("../../lib/prisma");
 const { authenticate } = require("../../middleware/authenticate");
 const { requireRole } = require("../../middleware/authorization");
+const { routeManagementRouter } = require("./route-management.routes");
 const { busesRouter } = require("./buses.routes");
 
 const adminRouter = Router();
 
 adminRouter.use(authenticate, requireRole("admin"));
+adminRouter.use("/routes", routeManagementRouter);
 adminRouter.use("/buses", busesRouter);
 
 async function getDashboardStats(_req, res) {
@@ -168,7 +170,6 @@ const crudHandler = (model, includes) => ({
 });
 
 const genericModels = [
-  { name: "routes", model: prisma.route, includes: undefined },
   { name: "companies", model: prisma.busCompany, includes: { buses: true } },
   { name: "bookings", model: prisma.booking, includes: { trip: { include: { route: true, company: true } } } },
   { name: "promotions", model: prisma.promotion, includes: undefined },
