@@ -3,7 +3,7 @@ import BookingSteps from '../components/booking/BookingSteps';
 import SearchHeader from '../components/search/SearchHeader';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import '../styles/booking.css';
-
+////
 const SeatSelectionPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
