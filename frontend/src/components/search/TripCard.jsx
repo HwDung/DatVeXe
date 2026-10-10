@@ -1,7 +1,9 @@
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 const TripCard = ({ trip }) => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const passengers = searchParams.get('passengers') || JSON.parse(sessionStorage.getItem('rightwaySearch') || '{}')?.passengers || '1';
 
   return (
     <div className="trip-card">
@@ -47,7 +49,24 @@ const TripCard = ({ trip }) => {
           <div className="price-info">
             <div className="price-label">giá vé từ</div>
             <div className="price-amount">{trip.price}</div>
-            <button className="btn-primary" style={{marginTop: '10px'}} onClick={() => navigate('/booking/seats')}>Chọn chuyến</button>
+            <button
+              className="btn-primary"
+              style={{ marginTop: '10px' }}
+              onClick={() => {
+                const savedSearch = (() => {
+                  try {
+                    return JSON.parse(sessionStorage.getItem('rightwaySearch') || '{}');
+                  } catch {
+                    return {};
+                  }
+                })();
+
+                sessionStorage.setItem('rightwaySearch', JSON.stringify({ ...savedSearch, passengers }));
+                navigate(`/booking/seats?passengers=${passengers}`, { state: { trip, passengers } });
+              }}
+            >
+              Chọn chuyến
+            </button>
           </div>
         </div>
       </div>

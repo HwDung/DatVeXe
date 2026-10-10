@@ -16,6 +16,7 @@ const SearchForm = () => {
     if (destination.trim()) params.set('destination', destination.trim());
     if (date) params.set('date', date);
     params.set('passengers', passengers);
+    sessionStorage.setItem('rightwaySearch', JSON.stringify({ passengers, origin, destination, date }));
     navigate(`/search?${params.toString()}`);
   };
 
