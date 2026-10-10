@@ -3,63 +3,7 @@ import BookingSteps from '../components/booking/BookingSteps';
 import SearchHeader from '../components/search/SearchHeader';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import '../styles/booking.css';
-
-const getStoredBooking = () => {
-  try {
-    const stored = sessionStorage.getItem('rightwayBooking');
-    return stored ? JSON.parse(stored) : {};
-  } catch (error) {
-    return {};
-  }
-};
-
-const getSeatStore = () => {
-  try {
-    const stored = localStorage.getItem('rightwayBookedSeats');
-    return stored ? JSON.parse(stored) : {};
-  } catch (error) {
-    return {};
-  }
-};
-
-const buildTripKey = (trip) => {
-  if (!trip) return 'default-trip';
-  return trip.id ? `trip:${trip.id}` : `${trip.origin || 'unknown'}-${trip.destination || 'unknown'}-${trip.departureTime || 'unknown'}`;
-};
-
-const getBookedSeatsForTrip = (trip) => {
-  const store = getSeatStore();
-  const key = buildTripKey(trip);
-  return Array.isArray(store[key]) ? store[key] : [];
-};
-
-const parsePrice = (value) => {
-  const normalized = Number(String(value || '0').replace(/[^\d]/g, ''));
-  return Number.isNaN(normalized) ? 0 : normalized;
-};
-
-const getPassengerCount = (searchParams, location, bookingData) => {
-  const storedSearch = (() => {
-    try {
-      return JSON.parse(sessionStorage.getItem('rightwaySearch') || '{}');
-    } catch {
-      return {};
-    }
-  })();
-
-  const rawValue =
-    searchParams.get('passengers') ||
-    location.state?.passengers ||
-    bookingData.passengers ||
-    storedSearch.passengers ||
-    new URLSearchParams(window.location.search).get('passengers') ||
-    '4';
-
-  const parsed = Number.parseInt(rawValue, 10);
-  if (Number.isNaN(parsed) || parsed < 1) return 4;
-  return Math.min(parsed, 4);
-};
-
+////
 const SeatSelectionPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
