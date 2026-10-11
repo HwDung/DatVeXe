@@ -58,4 +58,12 @@ async function authenticate(request, _response, next) {
   next();
 }
 
-module.exports = { authenticate };
+async function optionalAuthenticate(request, response, next) {
+  if (!request.header("authorization")) {
+    next();
+    return;
+  }
+  await authenticate(request, response, next);
+}
+
+module.exports = { authenticate, optionalAuthenticate };
