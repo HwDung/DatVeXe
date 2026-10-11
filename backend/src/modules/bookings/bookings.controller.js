@@ -31,6 +31,15 @@ async function lookupBooking(req, res) {
   }
 }
 
+async function listMyBookings(req, res, next) {
+  try {
+    const bookings = await service.listUserBookingsService(req.auth.userId);
+    res.json(bookings);
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function getBooking(req, res) {
   try {
     const booking = await service.getBookingService(req.params.id);
@@ -54,4 +63,4 @@ async function cancelBooking(req, res) {
   }
 }
 
-module.exports = { createBooking, lookupBooking, getBooking, cancelBooking };
+module.exports = { createBooking, lookupBooking, listMyBookings, getBooking, cancelBooking };

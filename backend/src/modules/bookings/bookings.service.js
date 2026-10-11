@@ -115,6 +115,22 @@ function lookupBookingService(bookingCode, phone) {
   });
 }
 
+function listUserBookingsService(userId) {
+  return prisma.booking.findMany({
+    where: { userId },
+    include: {
+      trip: {
+        include: {
+          route: true,
+          company: true,
+          bus: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
 function getBookingService(id) {
   return prisma.booking.findUnique({
     where: { id },
@@ -155,6 +171,7 @@ function cancelBookingService(id) {
 module.exports = {
   createBookingService,
   lookupBookingService,
+  listUserBookingsService,
   getBookingService,
   cancelBookingService,
 };
