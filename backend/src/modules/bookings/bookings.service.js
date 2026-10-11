@@ -1,30 +1,54 @@
+const { randomBytes } = require("node:crypto");
 const { prisma } = require("../../lib/prisma");
+const { HttpError } = require("../../utils/http-error");
 
 async function createBookingService(data) {
   const { tripId, tripDate, seatCode, passengerName, passengerPhone, passengerEmail, paymentMethod, userId } = data;
 
-  const date = new Date(tripDate);
+  const date = tripDate;
+  const bookingCode = `RW${randomBytes(8).toString("hex").toUpperCase()}`;
 
-  const existingSeat = await prisma.seatStatus.findUnique({
-    where: {
+  return prisma.$transaction(async (tx) => {
+    const trip = await tx.trip.findUnique({
+      where: { id: tripId },
+      select: {
+        id: true,
+        price: true,
+        isActive: true,
+        availableDate: true,
+        bus: { select: { totalSeats: true } },
+      },
+    });
+    if (!trip) {
+      throw new HttpError(404, "TRIP_NOT_FOUND", "Trip not found");
+    }
+    if (!trip.isActive) {
+      throw new HttpError(409, "TRIP_UNAVAILABLE", "Trip is not available");
+    }
+    if (trip.availableDate && trip.availableDate.toISOString().slice(0, 10) !== date.toISOString().slice(0, 10)) {
+      throw new HttpError(409, "TRIP_DATE_UNAVAILABLE", "Trip is not scheduled for the selected date");
+    }
+
+    const seatColumns = ["A", "B", "C"];
+    const seatColumnIndex = seatColumns.indexOf(seatCode[0]);
+    const seatNumber = Number(seatCode.slice(1));
+    const seatIndex = (seatNumber - 1) * seatColumns.length + seatColumnIndex;
+    if (seatIndex >= trip.bus.totalSeats) {
+      throw new HttpError(400, "INVALID_SEAT", "Seat does not exist on this bus");
+    }
+
+    const seatKey = {
       tripId_tripDate_seatCode: {
         tripId,
         tripDate: date,
         seatCode,
       },
-    },
-  });
+    };
+    const existingSeat = await tx.seatStatus.findUnique({ where: seatKey });
+    if (existingSeat && existingSeat.status !== "available") {
+      throw new HttpError(409, "SEAT_UNAVAILABLE", "Seat is no longer available");
+    }
 
-  if (existingSeat && existingSeat.status !== "available") {
-    throw new Error("Seat is no longer available");
-  }
-
-  const trip = await prisma.trip.findUnique({ where: { id: tripId } });
-  if (!trip) throw new Error("Trip not found");
-
-  const bookingCode = `RW${Date.now()}${Math.floor(Math.random() * 1000)}`;
-
-  return prisma.$transaction(async (tx) => {
     const newBooking = await tx.booking.create({
       data: {
         bookingCode,
@@ -43,20 +67,30 @@ async function createBookingService(data) {
     });
 
     if (existingSeat) {
-      await tx.seatStatus.update({
-        where: { id: existingSeat.id },
+      const claimedSeat = await tx.seatStatus.updateMany({
+        where: { id: existingSeat.id, status: "available" },
         data: { status: "booked", bookingId: newBooking.id },
       });
+      if (claimedSeat.count !== 1) {
+        throw new HttpError(409, "SEAT_UNAVAILABLE", "Seat is no longer available");
+      }
     } else {
-      await tx.seatStatus.create({
-        data: {
-          tripId,
-          tripDate: date,
-          seatCode,
-          status: "booked",
-          bookingId: newBooking.id,
-        },
-      });
+      try {
+        await tx.seatStatus.create({
+          data: {
+            tripId,
+            tripDate: date,
+            seatCode,
+            status: "booked",
+            bookingId: newBooking.id,
+          },
+        });
+      } catch (error) {
+        if (error.code === "P2002") {
+          throw new HttpError(409, "SEAT_UNAVAILABLE", "Seat is no longer available");
+        }
+        throw error;
+      }
     }
 
     return newBooking;
@@ -78,6 +112,22 @@ function lookupBookingService(bookingCode, phone) {
         },
       },
     },
+  });
+}
+
+function listUserBookingsService(userId) {
+  return prisma.booking.findMany({
+    where: { userId },
+    include: {
+      trip: {
+        include: {
+          route: true,
+          company: true,
+          bus: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
   });
 }
 
@@ -142,6 +192,7 @@ function getMyBookingsService({ userId, phone, email }) {
 module.exports = {
   createBookingService,
   lookupBookingService,
+  listUserBookingsService,
   getBookingService,
   cancelBookingService,
   getMyBookingsService,

@@ -13,6 +13,20 @@ const getStoredBooking = () => {
   }
 };
 
+const getStoredBooking = () => {
+  try {
+    const stored = sessionStorage.getItem('rightwayBooking');
+    return stored ? JSON.parse(stored) : {};
+  } catch (error) {
+    return {};
+  }
+};
+
+const parsePrice = (value) => {
+  const normalized = Number(String(value || '0').replace(/[^\d]/g, ''));
+  return Number.isNaN(normalized) ? 0 : normalized;
+};
+
 const PassengerInfoPage = () => {
   const navigate = useNavigate();
   const location = useLocation();

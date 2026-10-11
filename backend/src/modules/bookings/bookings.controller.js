@@ -1,12 +1,16 @@
 const service = require("./bookings.service");
+const { createBookingSchema } = require("./bookings.schemas");
 
-async function createBooking(req, res) {
+async function createBooking(req, res, next) {
   try {
-    const booking = await service.createBookingService(req.body);
+    const input = createBookingSchema.parse(req.body);
+    const booking = await service.createBookingService({
+      ...input,
+      userId: req.auth?.userId,
+    });
     res.status(201).json(booking);
   } catch (error) {
-    console.error(error);
-    res.status(400).json({ message: error.message || "Bad request" });
+    next(error);
   }
 }
 
@@ -24,6 +28,15 @@ async function lookupBooking(req, res) {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+async function listMyBookings(req, res, next) {
+  try {
+    const bookings = await service.listUserBookingsService(req.auth.userId);
+    res.json(bookings);
+  } catch (error) {
+    next(error);
   }
 }
 
