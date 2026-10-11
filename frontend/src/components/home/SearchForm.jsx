@@ -4,10 +4,18 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 const SearchForm = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const storedSearch = (() => {
+    try {
+      return JSON.parse(sessionStorage.getItem('rightwaySearch') || '{}');
+    } catch {
+      return {};
+    }
+  })();
+
   const [origin, setOrigin] = useState(searchParams.get('origin') || 'Hà Nội');
   const [destination, setDestination] = useState(searchParams.get('destination') || '');
   const [date, setDate] = useState(searchParams.get('date') || '');
-  const [passengers, setPassengers] = useState(searchParams.get('passengers') || '1');
+  const [passengers, setPassengers] = useState(searchParams.get('passengers') || storedSearch.passengers || '1');
 
   const handleSearch = (e) => {
     e.preventDefault();

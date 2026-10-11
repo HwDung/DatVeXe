@@ -8,7 +8,14 @@ const TripDetailPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [result, setResult] = useState({ key: '', loading: true, trip: null, notFound: false, error: '' });
-  const passengers = searchParams.get('passengers') || '1';
+  const savedSearch = (() => {
+    try {
+      return JSON.parse(sessionStorage.getItem('rightwaySearch') || '{}');
+    } catch {
+      return {};
+    }
+  })();
+  const passengers = searchParams.get('passengers') || savedSearch.passengers || '1';
 
   useEffect(() => {
     let isCurrentRequest = true;

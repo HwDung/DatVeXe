@@ -3,7 +3,14 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 const TripCard = ({ trip }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const passengers = searchParams.get('passengers') || JSON.parse(sessionStorage.getItem('rightwaySearch') || '{}')?.passengers || '1';
+  const savedSearch = (() => {
+    try {
+      return JSON.parse(sessionStorage.getItem('rightwaySearch') || '{}');
+    } catch {
+      return {};
+    }
+  })();
+  const passengers = searchParams.get('passengers') || savedSearch.passengers || '1';
 
   return (
     <div className="trip-card">
