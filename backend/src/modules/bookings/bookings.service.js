@@ -1,30 +1,31 @@
 const { prisma } = require("../../lib/prisma");
+const { HttpError } = require("../../utils/http-error");
 
 async function createBookingService(data) {
   const { tripId, tripDate, seatCode, passengerName, passengerPhone, passengerEmail, paymentMethod, userId } = data;
 
   const date = new Date(tripDate);
 
-  const existingSeat = await prisma.seatStatus.findUnique({
-    where: {
+  const bookingCode = `RW${Date.now()}${Math.floor(Math.random() * 1000)}`;
+
+  return prisma.$transaction(async (tx) => {
+    const trip = await tx.trip.findUnique({ where: { id: tripId } });
+    if (!trip) {
+      throw new HttpError(404, "TRIP_NOT_FOUND", "Trip not found");
+    }
+
+    const seatKey = {
       tripId_tripDate_seatCode: {
         tripId,
         tripDate: date,
         seatCode,
       },
-    },
-  });
+    };
+    const existingSeat = await tx.seatStatus.findUnique({ where: seatKey });
+    if (existingSeat && existingSeat.status !== "available") {
+      throw new HttpError(409, "SEAT_UNAVAILABLE", "Seat is no longer available");
+    }
 
-  if (existingSeat && existingSeat.status !== "available") {
-    throw new Error("Seat is no longer available");
-  }
-
-  const trip = await prisma.trip.findUnique({ where: { id: tripId } });
-  if (!trip) throw new Error("Trip not found");
-
-  const bookingCode = `RW${Date.now()}${Math.floor(Math.random() * 1000)}`;
-
-  return prisma.$transaction(async (tx) => {
     const newBooking = await tx.booking.create({
       data: {
         bookingCode,
@@ -43,20 +44,30 @@ async function createBookingService(data) {
     });
 
     if (existingSeat) {
-      await tx.seatStatus.update({
-        where: { id: existingSeat.id },
+      const claimedSeat = await tx.seatStatus.updateMany({
+        where: { id: existingSeat.id, status: "available" },
         data: { status: "booked", bookingId: newBooking.id },
       });
+      if (claimedSeat.count !== 1) {
+        throw new HttpError(409, "SEAT_UNAVAILABLE", "Seat is no longer available");
+      }
     } else {
-      await tx.seatStatus.create({
-        data: {
-          tripId,
-          tripDate: date,
-          seatCode,
-          status: "booked",
-          bookingId: newBooking.id,
-        },
-      });
+      try {
+        await tx.seatStatus.create({
+          data: {
+            tripId,
+            tripDate: date,
+            seatCode,
+            status: "booked",
+            bookingId: newBooking.id,
+          },
+        });
+      } catch (error) {
+        if (error.code === "P2002") {
+          throw new HttpError(409, "SEAT_UNAVAILABLE", "Seat is no longer available");
+        }
+        throw error;
+      }
     }
 
     return newBooking;
