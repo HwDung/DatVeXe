@@ -9,6 +9,7 @@ import TripDetailPage from './pages/TripDetailPage';
 import SeatSelectionPage from './pages/SeatSelectionPage';
 import PassengerInfoPage from './pages/PassengerInfoPage';
 import PaymentPage from './pages/PaymentPage';
+import BookingSuccessPage from './pages/BookingSuccessPage';
 import BookingLookupPage from './pages/BookingLookupPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -34,30 +35,10 @@ function MainLayout() {
           <Route path="/" element={<HomePage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/trips/:tripId" element={<TripDetailPage />} />
-          <Route
-            path="/booking/seats"
-            element={(
-              <ProtectedRoute>
-                <SeatSelectionPage />
-              </ProtectedRoute>
-            )}
-          />
-          <Route
-            path="/booking/passenger"
-            element={(
-              <ProtectedRoute>
-                <PassengerInfoPage />
-              </ProtectedRoute>
-            )}
-          />
-          <Route
-            path="/booking/payment"
-            element={(
-              <ProtectedRoute>
-                <PaymentPage />
-              </ProtectedRoute>
-            )}
-          />
+          <Route path="/booking/seats" element={<SeatSelectionPage />} />
+          <Route path="/booking/passenger" element={<PassengerInfoPage />} />
+          <Route path="/booking/payment" element={<PaymentPage />} />
+          <Route path="/booking/success" element={<BookingSuccessPage />} />
           <Route path="/lookup" element={<BookingLookupPage />} />
           <Route
             path="/login"

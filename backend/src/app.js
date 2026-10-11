@@ -13,10 +13,27 @@ const { promotionsRouter } = require("./modules/promotions/promotions.routes");
 const { newsRouter } = require("./modules/news/news.routes");
 
 const app = express();
+const allowedOrigins = new Set([
+  env.CORS_ORIGIN,
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:5174",
+]);
 
 app.disable("x-powered-by");
 app.use(helmet());
-app.use(cors({ origin: env.CORS_ORIGIN, credentials: true }));
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.has(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+}));
 app.use(express.json({ limit: "16kb" }));
 app.use(cookieParser());
 app.get("/health", (_request, response) => response.json({ status: "ok" }));

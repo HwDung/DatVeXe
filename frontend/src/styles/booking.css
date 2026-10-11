@@ -334,3 +334,171 @@
 .payment-method input {
   accent-color: var(--primary);
 }
+
+.payment-method img {
+  max-height: 32px;
+  max-width: 90px;
+  object-fit: contain;
+}
+
+/* ========================================================
+   Booking Success Page Styles (matching screenshot exactly)
+   ======================================================== */
+.booking-success-wrapper {
+  background-color: #FAFAFA;
+  min-height: calc(100vh - 80px - 280px);
+  padding: 48px 0 60px;
+}
+
+.booking-success-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.success-icon-badge {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background-color: #237804;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 12px rgba(35, 120, 4, 0.25);
+}
+
+.success-heading {
+  font-size: 28px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 8px;
+}
+
+.success-subheading {
+  font-size: 15px;
+  color: #6B7280;
+  margin-bottom: 32px;
+}
+
+.success-card {
+  width: 100%;
+  background: #FFFFFF;
+  border-radius: 16px;
+  padding: 32px 36px;
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  text-align: left;
+}
+
+.success-card-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 24px;
+}
+
+.success-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  row-gap: 20px;
+  column-gap: 32px;
+}
+
+.success-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.success-info-label {
+  font-size: 13px;
+  color: #9CA3AF;
+  font-weight: 400;
+}
+
+.success-info-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1F2937;
+  word-break: break-word;
+}
+
+.success-info-value.success-price {
+  color: #DC2626;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.success-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 32px;
+  width: 100%;
+}
+
+.btn-success-primary {
+  background-color: #DC2626;
+  color: #FFFFFF;
+  border: 1px solid #DC2626;
+  border-radius: 8px;
+  padding: 12px 28px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 150px;
+}
+
+.btn-success-primary:hover {
+  background-color: #B91C1C;
+  border-color: #B91C1C;
+}
+
+.btn-success-outline {
+  background-color: #FFFFFF;
+  color: #DC2626;
+  border: 1px solid #DC2626;
+  border-radius: 8px;
+  padding: 12px 28px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 150px;
+}
+
+.btn-success-outline:hover {
+  background-color: #FEF2F2;
+}
+
+.success-email-notice {
+  margin-top: 24px;
+  font-size: 13px;
+  color: #9CA3AF;
+}
+
+@media (max-width: 640px) {
+  .success-card {
+    padding: 24px 20px;
+  }
+  .success-info-grid {
+    grid-template-columns: 1fr;
+    row-gap: 16px;
+  }
+  .success-actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .btn-success-primary,
+  .btn-success-outline {
+    width: 100%;
+  }
+}

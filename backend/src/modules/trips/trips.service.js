@@ -80,13 +80,32 @@ async function getTripByIdService(id) {
   return trip;
 }
 
-function getTripSeatsService(id, dateStr) {
-  const date = new Date(dateStr);
-  return prisma.seatStatus.findMany({
+async function getTripSeatsService(id, date) {
+  const trip = await prisma.trip.findUnique({
+    where: { id },
+    select: { id: true, bus: { select: { totalSeats: true } } },
+  });
+  if (!trip) {
+    throw new HttpError(404, "TRIP_NOT_FOUND", "Trip not found");
+  }
+
+  const statuses = await prisma.seatStatus.findMany({
     where: {
       tripId: id,
       tripDate: date,
     },
+    select: { seatCode: true, status: true },
+  });
+
+  const statusBySeatCode = new Map(statuses.map(({ seatCode, status }) => [seatCode, status]));
+  const columns = ["A", "B", "C"];
+
+  return Array.from({ length: trip.bus.totalSeats }, (_, index) => {
+    const seatCode = `${columns[index % columns.length]}${Math.floor(index / columns.length) + 1}`;
+    return {
+      seatCode,
+      status: statusBySeatCode.get(seatCode) || "available",
+    };
   });
 }
 
