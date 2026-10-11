@@ -2,8 +2,66 @@ import React, { useEffect, useState } from 'react';
 import BookingSteps from '../components/booking/BookingSteps';
 import SearchHeader from '../components/search/SearchHeader';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { tripService } from '../services/api';
 import '../styles/booking.css';
-////
+
+const getStoredBooking = () => {
+  try {
+    const stored = sessionStorage.getItem('rightwayBooking');
+    return stored ? JSON.parse(stored) : {};
+  } catch (error) {
+    return {};
+  }
+};
+
+const getSeatStore = () => {
+  try {
+    const stored = localStorage.getItem('rightwayBookedSeats');
+    return stored ? JSON.parse(stored) : {};
+  } catch (error) {
+    return {};
+  }
+};
+
+const buildTripKey = (trip) => {
+  if (!trip) return 'default-trip';
+  return trip.id ? `trip:${trip.id}` : `${trip.origin || 'unknown'}-${trip.destination || 'unknown'}-${trip.departureTime || 'unknown'}`;
+};
+
+const getBookedSeatsForTrip = (trip) => {
+  const store = getSeatStore();
+  const key = buildTripKey(trip);
+  return Array.isArray(store[key]) ? store[key] : [];
+};
+
+const parsePrice = (value) => {
+  const normalized = Number(String(value || '0').replace(/[^\d]/g, ''));
+  return Number.isNaN(normalized) ? 0 : normalized;
+};
+
+const getStoredSearch = () => {
+  try {
+    return JSON.parse(sessionStorage.getItem('rightwaySearch') || '{}');
+  } catch {
+    return {};
+  }
+};
+
+const getPassengerCount = (searchParams, location, bookingData) => {
+  const storedSearch = getStoredSearch();
+  const rawValue = [
+    searchParams.get('passengers'),
+    location?.state?.passengers,
+    storedSearch.passengers,
+    bookingData?.passengers,
+    new URLSearchParams(window.location.search).get('passengers'),
+  ].find((value) => value !== null && value !== undefined && value !== '' && value !== 'undefined');
+
+  const parsed = Number.parseInt(String(rawValue ?? '1'), 10);
+  if (!Number.isInteger(parsed) || parsed < 1) return 1;
+  return Math.min(parsed, 4);
+};
+
 const SeatSelectionPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -11,16 +69,38 @@ const SeatSelectionPage = () => {
   const [activeFloor, setActiveFloor] = useState('lower');
   const [selectedSeats, setSelectedSeats] = useState([]);
   const [passengerCount, setPassengerCount] = useState(() => getPassengerCount(searchParams, location, getStoredBooking()));
+  const [dbBookedSeats, setDbBookedSeats] = useState([]);
 
   const bookingData = getStoredBooking();
   const trip = location.state?.trip || bookingData.trip || null;
+  const tripDate = searchParams.get('date') || new Date().toISOString().slice(0, 10);
 
   useEffect(() => {
     const nextCount = getPassengerCount(searchParams, location, bookingData);
     setPassengerCount(nextCount);
   }, [searchParams, location, bookingData]);
 
-  const maxSeatLimit = Math.max(passengerCount, 4);
+  useEffect(() => {
+    if (!trip?.id) {
+      setDbBookedSeats([]);
+      return;
+    }
+
+    tripService.getSeats(trip.id, tripDate)
+      .then(({ data }) => {
+        const booked = Array.isArray(data)
+          ? data
+              .filter((seat) => seat?.status && seat.status !== 'available')
+              .map((seat) => seat.seatCode)
+          : [];
+        setDbBookedSeats(booked);
+      })
+      .catch(() => {
+        setDbBookedSeats([]);
+      });
+  }, [trip?.id, tripDate]);
+
+  const maxSeatLimit = passengerCount || 4;
 
   useEffect(() => {
     if (!trip) {
@@ -35,8 +115,8 @@ const SeatSelectionPage = () => {
 
     const storedBooking = getStoredBooking();
     const storedSeats = Array.isArray(storedBooking.selectedSeats) ? storedBooking.selectedSeats : [];
-    setSelectedSeats(storedSeats.slice(0, passengerCount));
-  }, [navigate, passengerCount, trip]);
+    setSelectedSeats(storedSeats);
+  }, [navigate, trip]);
 
   useEffect(() => {
     if (!trip) return;
@@ -45,19 +125,14 @@ const SeatSelectionPage = () => {
     sessionStorage.setItem('rightwayBooking', JSON.stringify({
       ...storedBooking,
       trip,
-      passengers: passengerCount,
+      passengers: selectedSeats.length || passengerCount || 1,
       selectedSeats,
     }));
   }, [passengerCount, selectedSeats, trip]);
 
   const bookedSeats = Array.from(new Set([
-    'A2',
-    'C1',
-    'B3',
-    'A5',
-    'C6',
-    'B8',
     ...getBookedSeatsForTrip(trip),
+    ...dbBookedSeats,
   ]));
   const floorSeatMap = {
     lower: ['A1', 'B1', 'C1', 'A2', 'B2', 'C2', 'A3', 'B3', 'C3', 'A4', 'B4', 'C4'],
@@ -87,11 +162,6 @@ const SeatSelectionPage = () => {
               if (currentSelected.includes(id)) {
                 return currentSelected.filter((seat) => seat !== id);
               }
-
-              if (currentSelected.length >= maxSeatLimit) {
-                return currentSelected;
-              }
-
               return [...currentSelected, id];
             });
           }}
@@ -178,7 +248,9 @@ const SeatSelectionPage = () => {
             </div>
             <div className="summary-row">
               <span className="summary-label">Chỗ đã chọn</span>
-              <span className="summary-value highlight">{selectedSeats.length > 0 ? selectedSeats.join(', ') : 'Chưa chọn'}</span>
+              <span className="summary-value highlight">
+                {selectedSeats.length > 0 ? `${selectedSeats.join(', ')} (${selectedSeats.length} chỗ)` : 'Chưa chọn'}
+              </span>
             </div>
           </div>
 
@@ -192,7 +264,13 @@ const SeatSelectionPage = () => {
             disabled={selectedSeats.length === 0}
             onClick={() => {
               const booking = getStoredBooking();
-              sessionStorage.setItem('rightwayBooking', JSON.stringify({ ...booking, trip, selectedSeats }));
+              sessionStorage.setItem('rightwayBooking', JSON.stringify({
+                ...booking,
+                trip,
+                selectedSeats,
+                passengers: selectedSeats.length,
+                totalPrice: totalAmount,
+              }));
               navigate('/booking/passenger');
             }}
           >
