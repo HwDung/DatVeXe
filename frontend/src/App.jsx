@@ -35,11 +35,33 @@ function MainLayout() {
           <Route path="/" element={<HomePage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/trips/:tripId" element={<TripDetailPage />} />
-          <Route path="/booking/seats" element={<SeatSelectionPage />} />
-          <Route path="/booking/passenger" element={<PassengerInfoPage />} />
-          <Route path="/booking/payment" element={<PaymentPage />} />
+          <Route
+            path="/booking/seats"
+            element={(
+              <ProtectedRoute>
+                <SeatSelectionPage />
+              </ProtectedRoute>
+            )}
+          />
+          <Route
+            path="/booking/passenger"
+            element={(
+              <ProtectedRoute>
+                <PassengerInfoPage />
+              </ProtectedRoute>
+            )}
+          />
+          <Route
+            path="/booking/payment"
+            element={(
+              <ProtectedRoute>
+                <PaymentPage />
+              </ProtectedRoute>
+            )}
+          />
           <Route path="/booking/success" element={<BookingSuccessPage />} />
           <Route path="/lookup" element={<BookingLookupPage />} />
+          <Route path="/my-bookings" element={<BookingLookupPage />} />
           <Route
             path="/login"
             element={(

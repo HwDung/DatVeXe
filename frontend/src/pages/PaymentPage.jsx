@@ -1,41 +1,17 @@
 import React, { useState } from 'react';
 import BookingSteps from '../components/booking/BookingSteps';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { bookingService } from '../services/api';
+import '../styles/booking.css';
 
 const getStoredBooking = () => {
   try {
-    const stored = sessionStorage.getItem('rightwayBooking');
-    return stored ? JSON.parse(stored) : {};
-  } catch (error) {
+    const raw = sessionStorage.getItem('rightwayBooking');
+    return raw ? JSON.parse(raw) : {};
+  } catch {
     return {};
   }
-};
-
-const getSeatStore = () => {
-  try {
-    const stored = localStorage.getItem('rightwayBookedSeats');
-    return stored ? JSON.parse(stored) : {};
-  } catch (error) {
-    return {};
-  }
-};
-
-const buildTripKey = (trip) => {
-  if (!trip) return 'default-trip';
-  return trip.id ? `trip:${trip.id}` : `${trip.origin || 'unknown'}-${trip.destination || 'unknown'}-${trip.departureTime || 'unknown'}`;
-};
-
-const saveBookedSeatsForTrip = (trip, seatIds) => {
-  const store = getSeatStore();
-  const key = buildTripKey(trip);
-  store[key] = Array.from(new Set([...(store[key] || []), ...seatIds]));
-  localStorage.setItem('rightwayBookedSeats', JSON.stringify(store));
-};
-
-const parsePrice = (value) => {
-  const normalized = Number(String(value || '0').replace(/[^\d]/g, ''));
-  return Number.isNaN(normalized) ? 0 : normalized;
 };
 
 const MomoFallbackBadge = () => (
@@ -81,67 +57,92 @@ const generateBookingCode = () => {
 
 const PaymentPage = () => {
   const navigate = useNavigate();
-  const booking = getStoredBooking();
-  const trip = booking.trip || {};
-  const selectedSeats = Array.isArray(booking.selectedSeats) ? booking.selectedSeats : [];
-  const passenger = booking.passenger || {};
-  const tripPrice = parsePrice(trip.price || '300000');
-  const totalAmount = selectedSeats.length * tripPrice;
+  const location = useLocation();
+  const { user } = useAuth();
+
+  const stored = getStoredBooking();
+  const booking = location.state || stored;
+  const trip = booking.trip || stored.trip || {
+    id: 'trip-hcm-dl-01',
+    origin: 'TP.HCM',
+    destination: 'Đà Lạt',
+    departureTime: '22:00',
+    arrivalTime: '05:30',
+    company: 'Thành Bưởi',
+    price: 300000,
+  };
+
+  const selectedSeats = Array.isArray(booking.selectedSeats) && booking.selectedSeats.length > 0
+    ? booking.selectedSeats
+    : (Array.isArray(stored.selectedSeats) && stored.selectedSeats.length > 0 ? stored.selectedSeats : ['A1']);
+
+  const passenger = booking.passenger || stored.passenger || {
+    name: user?.fullName || 'Nguyễn Văn A',
+    phone: '0901234567',
+    email: user?.email || 'nguyenvana@gmail.com',
+  };
+
+  const departureDate = booking.departureDate || stored.departureDate || 'Hôm nay';
+  const totalAmount = booking.totalAmount || stored.totalAmount || (selectedSeats.length * 300000);
+
   const [paymentMethod, setPaymentMethod] = useState('momo');
   const [momoImgError, setMomoImgError] = useState(false);
   const [vnpayImgError, setVnpayImgError] = useState(false);
-  const [processing, setProcessing] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const confirmBooking = async () => {
-    setProcessing(true);
+    setSubmitting(true);
     const bookingCode = generateBookingCode();
     const completedBooking = {
       ...booking,
+      id: `ticket_${Date.now()}`,
       bookingCode,
       trip,
       passenger,
       selectedSeats,
+      departureDate,
       paymentMethod,
       totalAmount,
-      departureDate: booking.departureDate || booking.tripDate || new Date().toLocaleDateString('vi-VN'),
-      createdAt: new Date().toISOString(),
       status: 'confirmed',
+      paymentStatus: 'paid',
+      createdAt: new Date().toISOString(),
+      userId: user?.id || null,
     };
 
-    if (trip && selectedSeats.length) {
-      saveBookedSeatsForTrip(trip, selectedSeats);
-    }
-
-    // Persist completed booking to session and local history
+    // 1. Lưu vào session và lịch sử localStorage
     sessionStorage.setItem('lastCompletedBooking', JSON.stringify(completedBooking));
     try {
       const storedBookings = JSON.parse(localStorage.getItem('rightwayBookings') || '[]');
       storedBookings.unshift(completedBooking);
       localStorage.setItem('rightwayBookings', JSON.stringify(storedBookings));
     } catch {
-      // Ignore storage errors
+      // bỏ qua lỗi storage
     }
 
-    // Attempt backend sync
+    // 2. Thử gọi backend API
     try {
       if (trip?.id) {
         await bookingService.create({
+          userId: user?.id || null,
           tripId: trip.id,
-          tripDate: booking.tripDate || new Date().toISOString().slice(0, 10),
+          tripDate: departureDate,
           seatCode: selectedSeats.join(', '),
-          passengerName: passenger.name || 'Hành khách',
-          passengerPhone: passenger.phone || '0900000000',
-          passengerEmail: passenger.email || 'guest@rightway.com',
+          passengerName: passenger.name,
+          passengerPhone: passenger.phone,
+          passengerEmail: passenger.email,
           paymentMethod,
+          totalPrice: totalAmount,
         });
       }
     } catch {
-      // Backend is optional/mock-friendly
+      // Cho phép offline / mock tiếp tục
     }
 
     sessionStorage.removeItem('rightwayBooking');
     navigate('/booking/success', { state: { booking: completedBooking } });
   };
+
+  const routeTitle = `${trip.origin || 'TP.HCM'} → ${trip.destination || 'Đà Lạt'}`;
 
   return (
     <div className="booking-page">
@@ -222,16 +223,18 @@ const PaymentPage = () => {
           <div className="summary-details">
             <div className="summary-row">
               <span className="summary-label">Tuyến đường</span>
-              <span className="summary-value">{trip.origin || 'TP.HCM'} → {trip.destination || 'Đà Lạt'}</span>
+              <span className="summary-value">{routeTitle}</span>
             </div>
             <div className="summary-row">
               <span className="summary-label">Hành khách</span>
-              <span className="summary-value">{passenger.name || 'Nguyễn Văn A'}</span>
+              <span className="summary-value">{passenger.name}</span>
             </div>
             <div className="summary-row">
               <span className="summary-label">Chỗ đã chọn</span>
               <span className="summary-value highlight">
-                {selectedSeats.length ? `${selectedSeats.join(', ')} (${selectedSeats.length} chỗ)` : 'Chưa chọn'}
+                {selectedSeats.length > 0
+                  ? `${selectedSeats.join(', ')} (${selectedSeats.length} chỗ)`
+                  : 'Chưa chọn'}
               </span>
             </div>
           </div>
@@ -243,10 +246,10 @@ const PaymentPage = () => {
 
           <button
             className="btn-primary btn-full"
-            disabled={processing || selectedSeats.length === 0}
+            disabled={submitting}
             onClick={confirmBooking}
           >
-            {processing ? 'Đang xử lý...' : 'Xác nhận đặt vé'}
+            {submitting ? 'Đang xử lý...' : 'Xác nhận đặt vé'}
           </button>
         </div>
       </div>

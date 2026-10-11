@@ -1,6 +1,17 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import BookingSteps from '../components/booking/BookingSteps';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import '../styles/booking.css';
+
+const getStoredBooking = () => {
+  try {
+    const raw = sessionStorage.getItem('rightwayBooking');
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
 
 const getStoredBooking = () => {
   try {
@@ -18,46 +29,75 @@ const parsePrice = (value) => {
 
 const PassengerInfoPage = () => {
   const navigate = useNavigate();
-  const booking = getStoredBooking();
-  const trip = booking.trip || {};
-  const selectedSeats = Array.isArray(booking.selectedSeats) ? booking.selectedSeats : [];
-  const tripPrice = parsePrice(trip.price || '300000');
-  const totalAmount = selectedSeats.length * tripPrice;
+  const location = useLocation();
+  const { user } = useAuth();
+
+  const stored = getStoredBooking();
+  const booking = location.state || stored;
+  const trip = booking.trip || stored.trip || {
+    origin: 'TP.HCM',
+    destination: 'Đà Lạt',
+    departureTime: '22:00',
+    company: 'Thành Bưởi',
+    price: 300000,
+  };
+
+  const selectedSeats = Array.isArray(booking.selectedSeats)
+    ? booking.selectedSeats
+    : (Array.isArray(stored.selectedSeats) ? stored.selectedSeats : ['A1']);
+
+  const departureDate = booking.departureDate || stored.departureDate || 'Hôm nay';
+  const totalAmount = booking.totalAmount || stored.totalAmount || (selectedSeats.length * 300000);
 
   const [formData, setFormData] = useState({
-    name: '',
-    phone: '',
-    email: '',
-    agree: false,
+    name: user?.fullName || stored.passenger?.name || '',
+    phone: stored.passenger?.phone || '',
+    email: user?.email || stored.passenger?.email || '',
+    agree: true,
   });
 
-  const handleSubmit = (event) => {
-    event.preventDefault();
+  const [formError, setFormError] = useState('');
 
-    if (!selectedSeats.length) {
-      navigate('/booking/seats');
+  useEffect(() => {
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        name: prev.name || user.fullName || '',
+        email: prev.email || user.email || '',
+      }));
+    }
+  }, [user]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!formData.name.trim() || !formData.phone.trim() || !formData.email.trim()) {
+      setFormError('Vui lòng điền đầy đủ họ tên, số điện thoại và email.');
       return;
     }
 
-    if (!formData.name || !formData.phone || !formData.email || !formData.agree) {
-      alert('Vui lòng điền đầy đủ thông tin và chấp nhận điều khoản.');
+    if (!formData.agree) {
+      setFormError('Vui lòng đồng ý với điều khoản và chính sách của Rightway.');
       return;
     }
 
-    const nextBooking = {
+    const payload = {
       ...booking,
       trip,
       selectedSeats,
+      departureDate,
+      totalAmount,
       passenger: {
-        name: formData.name,
-        phone: formData.phone,
-        email: formData.email,
+        name: formData.name.trim(),
+        phone: formData.phone.trim(),
+        email: formData.email.trim(),
       },
     };
 
-    sessionStorage.setItem('rightwayBooking', JSON.stringify(nextBooking));
-    navigate('/booking/payment');
+    sessionStorage.setItem('rightwayBooking', JSON.stringify(payload));
+    navigate('/booking/payment', { state: payload });
   };
+
+  const routeTitle = `${trip.origin || 'TP.HCM'} → ${trip.destination || 'Đà Lạt'}`;
 
   return (
     <div className="booking-page">
@@ -66,6 +106,20 @@ const PassengerInfoPage = () => {
       <div className="container booking-layout" style={{ marginTop: '30px' }}>
         <div className="booking-main">
           <h2 className="summary-title">Thông tin hành khách</h2>
+
+          {formError ? (
+            <div style={{
+              background: '#FEF2F2',
+              color: '#B91C1C',
+              padding: '12px 16px',
+              borderRadius: '8px',
+              marginBottom: '20px',
+              fontSize: '14px',
+              border: '1px solid #FECACA',
+            }}>
+              {formError}
+            </div>
+          ) : null}
 
           <form onSubmit={handleSubmit}>
             <div className="form-section-title">Người đặt vé</div>
@@ -77,7 +131,11 @@ const PassengerInfoPage = () => {
                   type="text"
                   placeholder="Nhập họ và tên"
                   value={formData.name}
-                  onChange={(event) => setFormData((current) => ({ ...current, name: event.target.value }))}
+                  onChange={(e) => {
+                    setFormError('');
+                    setFormData({ ...formData, name: e.target.value });
+                  }}
+                  required
                 />
               </div>
 
@@ -87,17 +145,25 @@ const PassengerInfoPage = () => {
                   type="tel"
                   placeholder="Nhập số điện thoại"
                   value={formData.phone}
-                  onChange={(event) => setFormData((current) => ({ ...current, phone: event.target.value }))}
+                  onChange={(e) => {
+                    setFormError('');
+                    setFormData({ ...formData, phone: e.target.value });
+                  }}
+                  required
                 />
               </div>
 
-              <div className="input-group">
+              <div className="input-group" style={{ gridColumn: '1 / -1' }}>
                 <label>Email *</label>
                 <input
                   type="email"
-                  placeholder="Nhập email"
+                  placeholder="Nhập email nhận vé điện tử"
                   value={formData.email}
-                  onChange={(event) => setFormData((current) => ({ ...current, email: event.target.value }))}
+                  onChange={(e) => {
+                    setFormError('');
+                    setFormData({ ...formData, email: e.target.value });
+                  }}
+                  required
                 />
               </div>
             </div>
@@ -107,7 +173,7 @@ const PassengerInfoPage = () => {
                 <input
                   type="checkbox"
                   checked={formData.agree}
-                  onChange={(event) => setFormData((current) => ({ ...current, agree: event.target.checked }))}
+                  onChange={(e) => setFormData({ ...formData, agree: e.target.checked })}
                   style={{ accentColor: 'var(--primary)', width: '16px', height: '16px' }}
                 />
                 <span>Tôi chấp nhận điều khoản và chính sách của Rightway</span>
@@ -122,15 +188,27 @@ const PassengerInfoPage = () => {
           <div className="summary-details">
             <div className="summary-row">
               <span className="summary-label">Tuyến đường</span>
-              <span className="summary-value">{trip.origin || 'TP.HCM'} → {trip.destination || 'Đà Lạt'}</span>
+              <span className="summary-value">{routeTitle}</span>
+            </div>
+            <div className="summary-row">
+              <span className="summary-label">Ngày đi</span>
+              <span className="summary-value">{departureDate}</span>
             </div>
             <div className="summary-row">
               <span className="summary-label">Giờ khởi hành</span>
               <span className="summary-value">{trip.departureTime || '22:00'}</span>
             </div>
             <div className="summary-row">
+              <span className="summary-label">Hãng xe</span>
+              <span className="summary-value">{trip.company || 'Thành Bưởi'}</span>
+            </div>
+            <div className="summary-row">
               <span className="summary-label">Chỗ đã chọn</span>
-              <span className="summary-value highlight">{selectedSeats.length ? selectedSeats.join(', ') : 'Chưa chọn'}</span>
+              <span className="summary-value highlight">
+                {selectedSeats.length > 0
+                  ? `${selectedSeats.join(', ')} (${selectedSeats.length} chỗ)`
+                  : 'Chưa chọn'}
+              </span>
             </div>
           </div>
 
@@ -141,7 +219,7 @@ const PassengerInfoPage = () => {
 
           <button
             className="btn-primary btn-full"
-            type="submit"
+            type="button"
             onClick={handleSubmit}
           >
             Tiếp tục

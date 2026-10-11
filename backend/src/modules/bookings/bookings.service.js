@@ -168,10 +168,32 @@ function cancelBookingService(id) {
   });
 }
 
+function getMyBookingsService({ userId, phone, email }) {
+  const conditions = [];
+  if (userId) conditions.push({ userId });
+  if (phone) conditions.push({ passengerPhone: phone });
+  if (email) conditions.push({ passengerEmail: email });
+
+  return prisma.booking.findMany({
+    where: conditions.length > 0 ? { OR: conditions } : {},
+    include: {
+      trip: {
+        include: {
+          route: true,
+          company: true,
+          bus: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
 module.exports = {
   createBookingService,
   lookupBookingService,
   listUserBookingsService,
   getBookingService,
   cancelBookingService,
+  getMyBookingsService,
 };

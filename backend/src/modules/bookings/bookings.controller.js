@@ -63,4 +63,17 @@ async function cancelBooking(req, res) {
   }
 }
 
-module.exports = { createBooking, lookupBooking, listMyBookings, getBooking, cancelBooking };
+async function getMyBookings(req, res) {
+  try {
+    const userId = req.auth?.userId;
+    const phone = req.query?.phone;
+    const email = req.auth?.email || req.query?.email;
+    const bookings = await service.getMyBookingsService({ userId, phone, email });
+    res.json(bookings);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+}
+
+module.exports = { createBooking, lookupBooking, getBooking, cancelBooking, getMyBookings };

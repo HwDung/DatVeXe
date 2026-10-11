@@ -69,7 +69,6 @@ const BookingSuccessPage = () => {
     <div className="booking-page booking-success-wrapper">
       <div className="container">
         <div className="booking-success-content">
-          {/* Success Check Icon */}
           <div className="success-icon-badge">
             <i className="bi bi-check-lg"></i>
           </div>
@@ -77,7 +76,6 @@ const BookingSuccessPage = () => {
           <h1 className="success-heading">Đặt vé thành công!</h1>
           <p className="success-subheading">Cảm ơn bạn đã sử dụng Rightway.</p>
 
-          {/* Ticket Details Card */}
           <div className="success-card">
             <h2 className="success-card-title">Chi tiết vé xe</h2>
 
@@ -126,7 +124,6 @@ const BookingSuccessPage = () => {
             </div>
           </div>
 
-          {/* Action buttons */}
           <div className="success-actions">
             <button
               type="button"
