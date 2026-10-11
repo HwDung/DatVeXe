@@ -1,17 +1,40 @@
+const { randomBytes } = require("node:crypto");
 const { prisma } = require("../../lib/prisma");
 const { HttpError } = require("../../utils/http-error");
 
 async function createBookingService(data) {
   const { tripId, tripDate, seatCode, passengerName, passengerPhone, passengerEmail, paymentMethod, userId } = data;
 
-  const date = new Date(tripDate);
-
-  const bookingCode = `RW${Date.now()}${Math.floor(Math.random() * 1000)}`;
+  const date = tripDate;
+  const bookingCode = `RW${randomBytes(8).toString("hex").toUpperCase()}`;
 
   return prisma.$transaction(async (tx) => {
-    const trip = await tx.trip.findUnique({ where: { id: tripId } });
+    const trip = await tx.trip.findUnique({
+      where: { id: tripId },
+      select: {
+        id: true,
+        price: true,
+        isActive: true,
+        availableDate: true,
+        bus: { select: { totalSeats: true } },
+      },
+    });
     if (!trip) {
       throw new HttpError(404, "TRIP_NOT_FOUND", "Trip not found");
+    }
+    if (!trip.isActive) {
+      throw new HttpError(409, "TRIP_UNAVAILABLE", "Trip is not available");
+    }
+    if (trip.availableDate && trip.availableDate.toISOString().slice(0, 10) !== date.toISOString().slice(0, 10)) {
+      throw new HttpError(409, "TRIP_DATE_UNAVAILABLE", "Trip is not scheduled for the selected date");
+    }
+
+    const seatColumns = ["A", "B", "C"];
+    const seatColumnIndex = seatColumns.indexOf(seatCode[0]);
+    const seatNumber = Number(seatCode.slice(1));
+    const seatIndex = (seatNumber - 1) * seatColumns.length + seatColumnIndex;
+    if (seatIndex >= trip.bus.totalSeats) {
+      throw new HttpError(400, "INVALID_SEAT", "Seat does not exist on this bus");
     }
 
     const seatKey = {
