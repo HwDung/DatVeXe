@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { bookingService } from '../services/api';
 import '../styles/auth.css';
-import '../styles/booking.css';
-
+//
 const BookingLookupPage = () => {
   const [searchParams] = useSearchParams();
   const [bookingCode, setBookingCode] = useState(searchParams.get('code') || '');
