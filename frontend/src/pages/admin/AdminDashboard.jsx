@@ -120,7 +120,7 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Chart Placeholder */}
+      {/* Chart */}
       <div className="chart-card">
         <div style={{ textAlign: 'center' }}>
           <i className="bi bi-bar-chart" style={{ fontSize: '48px', color: '#D1D5DB' }}></i>
