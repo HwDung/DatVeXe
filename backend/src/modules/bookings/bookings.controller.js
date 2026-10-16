@@ -1,5 +1,11 @@
 const service = require("./bookings.service");
-const { createBookingSchema } = require("./bookings.schemas");
+const {
+  createBookingSchema,
+  bookingIdSchema,
+  bookingLookupSchema,
+  bookingAccessSchema,
+} = require("./bookings.schemas");
+const { HttpError } = require("../../utils/http-error");
 
 async function createBooking(req, res, next) {
   try {
@@ -14,20 +20,16 @@ async function createBooking(req, res, next) {
   }
 }
 
-async function lookupBooking(req, res) {
+async function lookupBooking(req, res, next) {
   try {
-    const { bookingCode, phone } = req.query;
-    if (!bookingCode || !phone) {
-      return res.status(400).json({ message: "bookingCode and phone are required" });
-    }
+    const { bookingCode, phone } = bookingLookupSchema.parse(req.query);
     const booking = await service.lookupBookingService(bookingCode, phone);
     if (!booking) {
-      return res.status(404).json({ message: "Booking not found" });
+      throw new HttpError(404, "BOOKING_NOT_FOUND", "Booking not found");
     }
     res.json(booking);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal server error" });
+    next(error);
   }
 }
 
@@ -40,40 +42,49 @@ async function listMyBookings(req, res, next) {
   }
 }
 
-async function getBooking(req, res) {
+async function getBooking(req, res, next) {
   try {
-    const booking = await service.getBookingService(req.params.id);
-    if (!booking) {
-      return res.status(404).json({ message: "Booking not found" });
+    const id = bookingIdSchema.parse(req.params.id);
+    const { phone } = bookingAccessSchema.parse(req.query);
+    const userId = req.auth?.userId;
+    if (!userId && !phone) {
+      throw new HttpError(401, "BOOKING_ACCESS_REQUIRED", "Authentication or passenger phone is required");
     }
+    const booking = await service.getBookingService(id, { userId, phone });
     res.json(booking);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal server error" });
+    next(error);
   }
 }
 
-async function cancelBooking(req, res) {
+async function cancelBooking(req, res, next) {
   try {
-    const booking = await service.cancelBookingService(req.params.id);
+    const id = bookingIdSchema.parse(req.params.id);
+    const { phone } = bookingAccessSchema.parse(req.body ?? {});
+    const userId = req.auth?.userId;
+    if (!userId && !phone) {
+      throw new HttpError(401, "BOOKING_ACCESS_REQUIRED", "Authentication or passenger phone is required");
+    }
+    const booking = await service.cancelBookingService(id, { userId, phone });
     res.json(booking);
   } catch (error) {
-    console.error(error);
-    res.status(400).json({ message: error.message || "Bad request" });
+    next(error);
   }
 }
 
-async function getMyBookings(req, res) {
+async function getMyBookings(req, res, next) {
   try {
     const userId = req.auth?.userId;
     const phone = req.query?.phone;
     const email = req.auth?.email || req.query?.email;
+    if (!userId && !phone && !email) {
+      throw new HttpError(401, "BOOKING_ACCESS_REQUIRED", "Authentication or passenger contact is required");
+    }
     const bookings = await service.getMyBookingsService({ userId, phone, email });
     res.json(bookings);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal server error" });
+    next(error);
   }
 }
 
-module.exports = { createBooking, lookupBooking, getBooking, cancelBooking, getMyBookings };
+module.exports = { createBooking, lookupBooking, listMyBookings, getBooking, cancelBooking, getMyBookings };

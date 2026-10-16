@@ -18,4 +18,18 @@ const createBookingSchema = z.object({
   paymentMethod: z.enum(["momo", "vnpay", "card", "atm"]).optional(),
 }).strict();
 
-module.exports = { createBookingSchema };
+const bookingIdSchema = z.string().trim().min(1).max(30);
+const bookingLookupSchema = z.object({
+  bookingCode: z.string().trim().min(1).max(20),
+  phone: z.string().trim().min(1).max(20),
+}).strict();
+const bookingAccessSchema = z.object({
+  phone: z.string().trim().min(1).max(20).optional(),
+}).strict();
+
+module.exports = {
+  createBookingSchema,
+  bookingIdSchema,
+  bookingLookupSchema,
+  bookingAccessSchema,
+};
