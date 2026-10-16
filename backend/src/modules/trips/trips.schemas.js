@@ -31,6 +31,7 @@ const tripSearchSchema = z.object({
   minPrice: optionalNumberQuery(2147483647),
   maxPrice: optionalNumberQuery(2147483647),
   companies: stringListQuery,
+  busTypes: stringListQuery,
   rating: optionalNumberQuery(5),
   departurePeriods: z.preprocess(
     (value) => value === undefined ? undefined : String(value).split(",").map((entry) => entry.trim()).filter(Boolean),

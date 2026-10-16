@@ -36,4 +36,13 @@ async function getTripSeats(req, res) {
   }
 }
 
-module.exports = { searchTrips, getTripById, getTripSeats };
+async function getFilterOptions(_req, res, next) {
+  try {
+    const options = await service.getFilterOptionsService();
+    res.json(options);
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = { searchTrips, getTripById, getTripSeats, getFilterOptions };
