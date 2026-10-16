@@ -43,4 +43,8 @@ const tripSearchSchema = z.object({
   { message: "minPrice must not exceed maxPrice", path: ["minPrice"] },
 );
 
-module.exports = { tripSearchSchema };
+const tripSeatsQuerySchema = z.object({
+  date: dateOnlySchema,
+}).strict();
+
+module.exports = { tripSearchSchema, tripSeatsQuerySchema };

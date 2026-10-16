@@ -9,6 +9,7 @@ import TripDetailPage from './pages/TripDetailPage';
 import SeatSelectionPage from './pages/SeatSelectionPage';
 import PassengerInfoPage from './pages/PassengerInfoPage';
 import PaymentPage from './pages/PaymentPage';
+import BookingSuccessPage from './pages/BookingSuccessPage';
 import BookingLookupPage from './pages/BookingLookupPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -59,7 +60,9 @@ function MainLayout() {
               </ProtectedRoute>
             )}
           />
+          <Route path="/booking/success" element={<BookingSuccessPage />} />
           <Route path="/lookup" element={<BookingLookupPage />} />
+          <Route path="/my-bookings" element={<BookingLookupPage />} />
           <Route
             path="/login"
             element={(

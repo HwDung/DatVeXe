@@ -3,6 +3,15 @@ import { Link, useNavigate } from 'react-router-dom';
 
 const TripCard = ({ trip, tripDate }) => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const savedSearch = (() => {
+    try {
+      return JSON.parse(sessionStorage.getItem('rightwaySearch') || '{}');
+    } catch {
+      return {};
+    }
+  })();
+  const passengers = searchParams.get('passengers') || savedSearch.passengers || '1';
 
   const formatCurrency = (amount) => {
     if (typeof amount === 'string' && amount.includes('đ')) return amount;
