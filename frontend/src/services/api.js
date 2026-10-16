@@ -42,6 +42,7 @@ export const tripService = {
   search: (params) => api.get('/trips/search', { params }),
   getById: (id) => api.get(`/trips/${id}`),
   getSeats: (id, date) => api.get(`/trips/${id}/seats`, { params: { date } }),
+  getFilterOptions: () => api.get('/trips/filter-options'),
 };
 
 export const bookingService = {

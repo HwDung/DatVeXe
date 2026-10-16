@@ -22,6 +22,7 @@ import AdminBookings from './pages/admin/AdminBookings';
 import AdminPromotions from './pages/admin/AdminPromotions';
 import AdminNews from './pages/admin/AdminNews';
 import AdminUsers from './pages/admin/AdminUsers';
+import AdminReports from './pages/admin/AdminReports';
 import './styles/global.css';
 import './styles/admin.css';
 import './styles/auth.css';
@@ -96,6 +97,7 @@ function AppContent() {
         <AdminLayout>
           <Routes>
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/reports" element={<AdminReports />} />
             <Route path="/admin/trips" element={<AdminTrips />} />
             <Route path="/admin/routes" element={<AdminRoutes />} />
             <Route path="/admin/companies" element={<AdminCompanies />} />

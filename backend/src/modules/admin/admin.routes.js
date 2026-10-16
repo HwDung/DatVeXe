@@ -7,6 +7,7 @@ const { tripManagementRouter } = require("./trip-management.routes");
 const { pickupDropoffPointsRouter } = require("./pickup-dropoff-points.routes");
 const { routeManagementRouter } = require("./route-management.routes");
 const { busesRouter } = require("./buses.routes");
+const { reportsRouter } = require("./reports.routes");
 
 const adminRouter = Router();
 
@@ -16,6 +17,7 @@ adminRouter.use("/trips", tripManagementRouter);
 adminRouter.use("/pickup-dropoff-points", pickupDropoffPointsRouter);
 adminRouter.use("/routes", routeManagementRouter);
 adminRouter.use("/buses", busesRouter);
+adminRouter.use("/reports", reportsRouter);
 
 async function getDashboardStats(_req, res) {
   try {
@@ -26,11 +28,84 @@ async function getDashboardStats(_req, res) {
     });
     const totalUsers = await prisma.user.count();
     const totalTrips = await prisma.trip.count();
-    const recentBookings = await prisma.booking.findMany({
-      take: 10,
+
+    const allBookings = await prisma.booking.findMany({
       orderBy: { createdAt: "desc" },
       include: { trip: { include: { route: true, company: true } } },
     });
+
+    const recentBookings = allBookings.slice(0, 10);
+
+    // Calculate monthly stats for the last 6 months
+    const monthlyMap = {};
+    const now = new Date();
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `T${d.getMonth() + 1}/${d.getFullYear()}`;
+      monthlyMap[key] = { month: key, revenue: 0, bookings: 0 };
+    }
+
+    // Calculate daily stats for last 7 days
+    const dailyMap = {};
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = `${d.getDate()}/${d.getMonth() + 1}`;
+      dailyMap[key] = { date: key, revenue: 0, bookings: 0 };
+    }
+
+    // Status breakdown
+    const statusCounts = {
+      confirmed: 0,
+      pending: 0,
+      completed: 0,
+      cancelled: 0,
+    };
+
+    const routeStats = {};
+
+    allBookings.forEach((b) => {
+      const price = Number(b.totalPrice) || 0;
+      const isPaid = b.paymentStatus === "paid";
+      const bDate = b.createdAt ? new Date(b.createdAt) : null;
+
+      // Status
+      if (b.status in statusCounts) {
+        statusCounts[b.status]++;
+      } else {
+        statusCounts.pending++;
+      }
+
+      // Monthly
+      if (bDate) {
+        const mKey = `T${bDate.getMonth() + 1}/${bDate.getFullYear()}`;
+        if (monthlyMap[mKey]) {
+          monthlyMap[mKey].bookings++;
+          if (isPaid) monthlyMap[mKey].revenue += price;
+        }
+
+        // Daily
+        const dKey = `${bDate.getDate()}/${bDate.getMonth() + 1}`;
+        if (dailyMap[dKey]) {
+          dailyMap[dKey].bookings++;
+          if (isPaid) dailyMap[dKey].revenue += price;
+        }
+      }
+
+      // Route
+      const origin = b.trip?.route?.origin || "";
+      const dest = b.trip?.route?.destination || "";
+      const routeName = origin && dest ? `${origin} - ${dest}` : "Khác";
+      if (!routeStats[routeName]) {
+        routeStats[routeName] = { routeName, bookings: 0, revenue: 0 };
+      }
+      routeStats[routeName].bookings++;
+      if (isPaid) routeStats[routeName].revenue += price;
+    });
+
+    const topRoutes = Object.values(routeStats)
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
 
     res.json({
       totalBookings,
@@ -38,6 +113,10 @@ async function getDashboardStats(_req, res) {
       totalUsers,
       totalTrips,
       recentBookings,
+      monthlyStats: Object.values(monthlyMap),
+      dailyStats: Object.values(dailyMap),
+      statusCounts,
+      topRoutes,
     });
   } catch (error) {
     console.error(error);

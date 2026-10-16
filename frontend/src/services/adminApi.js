@@ -40,4 +40,8 @@ export const adminService = {
   
   // Users
   getUsers: (params) => api.get('/admin/users', { params }),
+  
+  // Reports & Analytics
+  getReports: (params) => api.get('/admin/reports', { params }),
+  exportReportsExcel: (params) => api.get('/admin/reports/export-excel', { params, responseType: 'blob' }),
 };
