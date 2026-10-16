@@ -2,6 +2,16 @@ const { randomBytes } = require("node:crypto");
 const { prisma } = require("../../lib/prisma");
 const { HttpError } = require("../../utils/http-error");
 
+const bookingInclude = {
+  trip: {
+    include: {
+      route: true,
+      company: true,
+      bus: true,
+    },
+  },
+};
+
 async function createBookingService(data) {
   const { tripId, tripDate, seatCode, passengerName, passengerPhone, passengerEmail, paymentMethod, userId } = data;
 
@@ -103,68 +113,80 @@ function lookupBookingService(bookingCode, phone) {
       bookingCode,
       passengerPhone: phone,
     },
-    include: {
-      trip: {
-        include: {
-          route: true,
-          company: true,
-          bus: true,
-        },
-      },
-    },
+    include: bookingInclude,
   });
 }
 
 function listUserBookingsService(userId) {
   return prisma.booking.findMany({
     where: { userId },
-    include: {
-      trip: {
-        include: {
-          route: true,
-          company: true,
-          bus: true,
-        },
-      },
-    },
+    include: bookingInclude,
     orderBy: { createdAt: "desc" },
   });
 }
 
-function getBookingService(id) {
-  return prisma.booking.findUnique({
+async function getBookingService(id, { userId, phone }) {
+  const booking = await prisma.booking.findUnique({
     where: { id },
-    include: {
-      trip: {
-        include: {
-          route: true,
-          company: true,
-          bus: true,
-        },
-      },
-    },
+    include: bookingInclude,
   });
+
+  if (!booking || (booking.userId !== userId && booking.passengerPhone !== phone)) {
+    throw new HttpError(404, "BOOKING_NOT_FOUND", "Booking not found");
+  }
+
+  return booking;
 }
 
-function cancelBookingService(id) {
+function assertBookingAccess(booking, { userId, phone }) {
+  if (booking.userId !== userId && booking.passengerPhone !== phone) {
+    throw new HttpError(404, "BOOKING_NOT_FOUND", "Booking not found");
+  }
+}
+
+function getDepartureDateTime(booking) {
+  const tripDate = booking.tripDate.toISOString().slice(0, 10);
+  const departureTime = booking.trip.departureTime;
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(departureTime)) {
+    throw new HttpError(409, "INVALID_TRIP_SCHEDULE", "Trip departure time is invalid");
+  }
+  return new Date(`${tripDate}T${departureTime}:00+07:00`);
+}
+
+function cancelBookingService(id, identity) {
   return prisma.$transaction(async (tx) => {
-    const booking = await tx.booking.findUnique({ where: { id }, include: { seatStatuses: true } });
-    if (!booking) throw new Error("Booking not found");
-    if (booking.status === "cancelled") throw new Error("Booking already cancelled");
-
-    const updated = await tx.booking.update({
+    const booking = await tx.booking.findUnique({
       where: { id },
-      data: { status: "cancelled" },
+      include: { trip: { select: { departureTime: true } } },
     });
-
-    for (const seat of booking.seatStatuses) {
-      await tx.seatStatus.update({
-        where: { id: seat.id },
-        data: { status: "available", bookingId: null },
-      });
+    if (!booking) {
+      throw new HttpError(404, "BOOKING_NOT_FOUND", "Booking not found");
+    }
+    assertBookingAccess(booking, identity);
+    if (!["pending", "confirmed"].includes(booking.status)) {
+      throw new HttpError(409, "BOOKING_NOT_CANCELLABLE", "Booking cannot be cancelled");
+    }
+    if (getDepartureDateTime(booking) <= new Date()) {
+      throw new HttpError(409, "CANCELLATION_DEADLINE_PASSED", "Booking can no longer be cancelled after departure");
     }
 
-    return updated;
+    const update = await tx.booking.updateMany({
+      where: { id, status: { in: ["pending", "confirmed"] } },
+      data: {
+        status: "cancelled",
+        ...(booking.paymentStatus === "paid" ? { paymentStatus: "refunded" } : {}),
+      },
+    });
+    if (update.count !== 1) {
+      throw new HttpError(409, "BOOKING_NOT_CANCELLABLE", "Booking cannot be cancelled");
+    }
+
+    await tx.seatStatus.updateMany({
+      where: { bookingId: id, status: "booked" },
+      data: { status: "available", bookingId: null },
+    });
+
+    return tx.booking.findUnique({ where: { id }, include: bookingInclude });
   });
 }
 
@@ -176,15 +198,7 @@ function getMyBookingsService({ userId, phone, email }) {
 
   return prisma.booking.findMany({
     where: conditions.length > 0 ? { OR: conditions } : {},
-    include: {
-      trip: {
-        include: {
-          route: true,
-          company: true,
-          bus: true,
-        },
-      },
-    },
+    include: bookingInclude,
     orderBy: { createdAt: "desc" },
   });
 }

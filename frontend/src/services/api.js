@@ -47,8 +47,8 @@ export const tripService = {
 export const bookingService = {
   create: (data) => api.post('/bookings', data),
   lookup: (bookingCode, phone) => api.get('/bookings/lookup', { params: { bookingCode, phone } }),
-  getById: (id) => api.get(`/bookings/${id}`),
-  cancel: (id) => api.patch(`/bookings/${id}/cancel`),
+  getById: (id, phone) => api.get(`/bookings/${id}`, { params: phone ? { phone } : {} }),
+  cancel: (id, phone) => api.patch(`/bookings/${id}/cancel`, phone ? { phone } : {}),
 };
 
 export const routeService = {
