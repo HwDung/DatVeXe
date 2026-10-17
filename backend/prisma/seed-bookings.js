@@ -74,6 +74,18 @@ async function seedBookings() {
       paymentMethod,
       paymentStatus,
       createdAt,
+      tickets: {
+        create: {
+          ticketCode: `${bookingCode}-01`,
+          seatCode,
+          passengerName: passenger.name,
+          passengerPhone: passenger.phone,
+          passengerEmail: passenger.email,
+          price: trip.price || 300000,
+          status,
+          createdAt,
+        },
+      },
     });
   }
 

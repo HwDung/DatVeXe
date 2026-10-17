@@ -3,6 +3,7 @@ const { prisma } = require("../../lib/prisma");
 const { HttpError } = require("../../utils/http-error");
 
 const bookingInclude = {
+  tickets: { orderBy: { seatCode: "asc" } },
   trip: {
     include: {
       route: true,
@@ -13,7 +14,16 @@ const bookingInclude = {
 };
 
 async function createBookingService(data) {
-  const { tripId, tripDate, seatCode, passengerName, passengerPhone, passengerEmail, paymentMethod, userId } = data;
+  const {
+    tripId,
+    tripDate,
+    seatCodes,
+    passengerName,
+    passengerPhone,
+    passengerEmail,
+    paymentMethod,
+    userId,
+  } = data;
 
   const date = tripDate;
   const bookingCode = `RW${randomBytes(8).toString("hex").toUpperCase()}`;
@@ -40,22 +50,23 @@ async function createBookingService(data) {
     }
 
     const seatColumns = ["A", "B", "C"];
-    const seatColumnIndex = seatColumns.indexOf(seatCode[0]);
-    const seatNumber = Number(seatCode.slice(1));
-    const seatIndex = (seatNumber - 1) * seatColumns.length + seatColumnIndex;
-    if (seatIndex >= trip.bus.totalSeats) {
-      throw new HttpError(400, "INVALID_SEAT", "Seat does not exist on this bus");
+    for (const seatCode of seatCodes) {
+      const seatColumnIndex = seatColumns.indexOf(seatCode[0]);
+      const seatNumber = Number(seatCode.slice(1));
+      const seatIndex = (seatNumber - 1) * seatColumns.length + seatColumnIndex;
+      if (seatColumnIndex < 0 || seatNumber < 1 || seatIndex >= trip.bus.totalSeats) {
+        throw new HttpError(400, "INVALID_SEAT", `Seat ${seatCode} does not exist on this bus`);
+      }
     }
 
-    const seatKey = {
-      tripId_tripDate_seatCode: {
+    const existingSeats = await tx.seatStatus.findMany({
+      where: {
         tripId,
         tripDate: date,
-        seatCode,
+        seatCode: { in: seatCodes },
       },
-    };
-    const existingSeat = await tx.seatStatus.findUnique({ where: seatKey });
-    if (existingSeat && existingSeat.status !== "available") {
+    });
+    if (existingSeats.some((seat) => seat.status !== "available")) {
       throw new HttpError(409, "SEAT_UNAVAILABLE", "Seat is no longer available");
     }
 
@@ -68,42 +79,61 @@ async function createBookingService(data) {
         passengerName,
         passengerPhone,
         passengerEmail,
-        seatCode,
-        totalPrice: trip.price,
+        seatCode: seatCodes.join(", "),
+        totalPrice: trip.price * seatCodes.length,
         paymentMethod,
         status: "pending",
         paymentStatus: "unpaid",
+        tickets: {
+          create: seatCodes.map((seatCode) => ({
+            ticketCode: `${bookingCode}-${randomBytes(3).toString("hex").toUpperCase()}`,
+            seatCode,
+            passengerName,
+            passengerPhone,
+            passengerEmail,
+            price: trip.price,
+            status: "pending",
+          })),
+        },
       },
+      include: { tickets: true },
     });
 
-    if (existingSeat) {
-      const claimedSeat = await tx.seatStatus.updateMany({
-        where: { id: existingSeat.id, status: "available" },
-        data: { status: "booked", bookingId: newBooking.id },
-      });
-      if (claimedSeat.count !== 1) {
-        throw new HttpError(409, "SEAT_UNAVAILABLE", "Seat is no longer available");
-      }
-    } else {
-      try {
-        await tx.seatStatus.create({
-          data: {
-            tripId,
-            tripDate: date,
-            seatCode,
-            status: "booked",
-            bookingId: newBooking.id,
-          },
+    for (const ticket of newBooking.tickets) {
+      const existingSeat = existingSeats.find((seat) => seat.seatCode === ticket.seatCode);
+      if (existingSeat) {
+        const claimedSeat = await tx.seatStatus.updateMany({
+          where: { id: existingSeat.id, status: "available" },
+          data: { status: "booked", bookingId: newBooking.id, ticketId: ticket.id },
         });
-      } catch (error) {
-        if (error.code === "P2002") {
+        if (claimedSeat.count !== 1) {
           throw new HttpError(409, "SEAT_UNAVAILABLE", "Seat is no longer available");
         }
-        throw error;
+      } else {
+        try {
+          await tx.seatStatus.create({
+            data: {
+              tripId,
+              tripDate: date,
+              seatCode: ticket.seatCode,
+              status: "booked",
+              bookingId: newBooking.id,
+              ticketId: ticket.id,
+            },
+          });
+        } catch (error) {
+          if (error.code === "P2002") {
+            throw new HttpError(409, "SEAT_UNAVAILABLE", "Seat is no longer available");
+          }
+          throw error;
+        }
       }
     }
 
-    return newBooking;
+    return tx.booking.findUnique({
+      where: { id: newBooking.id },
+      include: bookingInclude,
+    });
   });
 }
 
@@ -183,7 +213,12 @@ function cancelBookingService(id, identity) {
 
     await tx.seatStatus.updateMany({
       where: { bookingId: id, status: "booked" },
-      data: { status: "available", bookingId: null },
+      data: { status: "available", bookingId: null, ticketId: null },
+    });
+
+    await tx.ticket.updateMany({
+      where: { bookingId: id, status: { in: ["pending", "confirmed"] } },
+      data: { status: "cancelled" },
     });
 
     return tx.booking.findUnique({ where: { id }, include: bookingInclude });

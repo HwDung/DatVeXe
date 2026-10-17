@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import BookingSteps from '../components/booking/BookingSteps';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -122,16 +122,23 @@ const PaymentPage = () => {
     // 2. Thử gọi backend API
     try {
       if (trip?.id) {
+        const tripDate = /^\d{4}-\d{2}-\d{2}$/.test(departureDate)
+          ? departureDate
+          : (() => {
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+          })();
         await bookingService.create({
-          userId: user?.id || null,
           tripId: trip.id,
-          tripDate: departureDate,
-          seatCode: selectedSeats.join(', '),
+          tripDate,
+          seatCodes: selectedSeats,
           passengerName: passenger.name,
           passengerPhone: passenger.phone,
           passengerEmail: passenger.email,
           paymentMethod,
-          totalPrice: totalAmount,
         });
       }
     } catch {
