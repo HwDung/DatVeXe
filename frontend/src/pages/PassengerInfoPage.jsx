@@ -4,14 +4,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import '../styles/booking.css';
 
-const getStoredBooking = () => {
-  try {
-    const raw = sessionStorage.getItem('rightwayBooking');
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-};
 
 const getStoredBooking = () => {
   try {
