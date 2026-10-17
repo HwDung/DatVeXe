@@ -20,7 +20,7 @@ const PassengerInfoPage = () => {
   useEffect(() => {
     let data = location.state;
     if (!data) {
-      const stored = sessionStorage.getItem('currentBooking');
+      const stored = sessionStorage.getItem('currentBooking') || sessionStorage.getItem('rightwayBooking');
       if (stored) {
         try {
           data = JSON.parse(stored);
@@ -82,6 +82,7 @@ const PassengerInfoPage = () => {
     };
 
     sessionStorage.setItem('currentBooking', JSON.stringify(updatedData));
+    sessionStorage.setItem('rightwayBooking', JSON.stringify(updatedData));
     navigate('/booking/payment', { state: updatedData });
   };
 
@@ -90,8 +91,8 @@ const PassengerInfoPage = () => {
   }
 
   const { trip, tripDate, selectedSeats, totalPrice } = bookingData;
-  const routeName = trip.route ? `${trip.route.origin} → ${trip.route.destination}` : '';
-  const companyName = trip.company?.name || 'Nhà xe';
+  const routeName = trip.route ? `${trip.route.origin} → ${trip.route.destination}` : `${trip.origin || ''} → ${trip.destination || ''}`;
+  const companyName = trip.company?.name || trip.company || 'Nhà xe';
 
   return (
     <div className="booking-page">
@@ -205,11 +206,11 @@ const PassengerInfoPage = () => {
             <div className="summary-row">
               <span className="summary-label">Ngày đi</span>
               <span className="summary-value">
-                {new Date(tripDate).toLocaleDateString('vi-VN', {
+                {tripDate ? new Date(tripDate).toLocaleDateString('vi-VN', {
                   day: '2-digit',
                   month: '2-digit',
                   year: 'numeric',
-                })}
+                }) : 'Hôm nay'}
               </span>
             </div>
             <div className="summary-row">
@@ -226,7 +227,7 @@ const PassengerInfoPage = () => {
 
           <div className="summary-total">
             <span className="total-label">Tổng tiền</span>
-            <span className="total-amount">{totalPrice.toLocaleString('vi-VN')}đ</span>
+            <span className="total-amount">{(totalPrice || 0).toLocaleString('vi-VN')}đ</span>
           </div>
 
           <button

@@ -5,6 +5,11 @@ const TripCard = ({ trip, tripDate }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
+  const formatCurrency = (amount) => {
+    if (typeof amount === 'string' && amount.includes('đ')) return amount;
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(amount) || 0);
+  };
+
   const handleSelectTrip = () => {
     const dateParam =
       tripDate ||
@@ -36,7 +41,7 @@ const TripCard = ({ trip, tripDate }) => {
               <div className="bus-type">{trip.busType}</div>
             </div>
             <div className="trip-rating">
-              <i className="bi bi-star-fill" style={{ color: '#F59E0B' }}></i> {trip.rating} ({trip.reviews})
+              <i className="bi bi-star-fill" style={{ color: '#F59E0B' }}></i> {trip.rating || 4.5} ({trip.reviews || 0})
             </div>
           </div>
 
@@ -47,7 +52,7 @@ const TripCard = ({ trip, tripDate }) => {
             </div>
 
             <div className="duration">
-              <span>{trip.duration}</span>
+              <span>{trip.duration || '6h 00m'}</span>
             </div>
 
             <div className="time-block">
@@ -60,12 +65,12 @@ const TripCard = ({ trip, tripDate }) => {
         <div className="trip-footer">
           <div className="seats-left">
             <span style={{ color: 'var(--primary)', fontWeight: 600 }}>
-              {trip.seatsAvailable == null ? '40 chỗ trống' : `${trip.seatsAvailable} chỗ trống`}
+              {trip.seatsAvailable == null ? 'Còn chỗ' : `${trip.seatsAvailable} chỗ trống`}
             </span>
           </div>
           <div className="price-info">
             <div className="price-label">giá vé từ</div>
-            <div className="price-amount">{trip.price}</div>
+            <div className="price-amount">{formatCurrency(trip.price)}</div>
             <button
               type="button"
               className="btn-primary"

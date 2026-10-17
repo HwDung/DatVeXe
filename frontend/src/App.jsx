@@ -10,6 +10,7 @@ import TripDetailPage from './pages/TripDetailPage';
 import SeatSelectionPage from './pages/SeatSelectionPage';
 import PassengerInfoPage from './pages/PassengerInfoPage';
 import PaymentPage from './pages/PaymentPage';
+import BookingSuccessPage from './pages/BookingSuccessPage';
 import BookingLookupPage from './pages/BookingLookupPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -22,6 +23,7 @@ import AdminBookings from './pages/admin/AdminBookings';
 import AdminPromotions from './pages/admin/AdminPromotions';
 import AdminNews from './pages/admin/AdminNews';
 import AdminUsers from './pages/admin/AdminUsers';
+import AdminReports from './pages/admin/AdminReports';
 import './styles/global.css';
 import './styles/admin.css';
 import './styles/auth.css';
@@ -38,7 +40,9 @@ function MainLayout() {
           <Route path="/booking/seats" element={<SeatSelectionPage />} />
           <Route path="/booking/passenger" element={<PassengerInfoPage />} />
           <Route path="/booking/payment" element={<PaymentPage />} />
+          <Route path="/booking/success" element={<BookingSuccessPage />} />
           <Route path="/lookup" element={<BookingLookupPage />} />
+          <Route path="/my-bookings" element={<BookingLookupPage />} />
           <Route
             path="/login"
             element={(
@@ -73,6 +77,7 @@ function AppContent() {
         <AdminLayout>
           <Routes>
             <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin/reports" element={<AdminReports />} />
             <Route path="/admin/trips" element={<AdminTrips />} />
             <Route path="/admin/routes" element={<AdminRoutes />} />
             <Route path="/admin/companies" element={<AdminCompanies />} />

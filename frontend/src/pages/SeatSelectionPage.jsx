@@ -17,7 +17,7 @@ const SeatSelectionPage = () => {
     location.state?.tripId ||
     (() => {
       try {
-        const stored = sessionStorage.getItem('currentBooking');
+        const stored = sessionStorage.getItem('currentBooking') || sessionStorage.getItem('rightwayBooking');
         return stored ? JSON.parse(stored)?.trip?.id : null;
       } catch {
         return null;
@@ -29,8 +29,9 @@ const SeatSelectionPage = () => {
     location.state?.tripDate ||
     (() => {
       try {
-        const stored = sessionStorage.getItem('currentBooking');
-        return stored ? JSON.parse(stored)?.tripDate : null;
+        const stored = sessionStorage.getItem('currentBooking') || sessionStorage.getItem('rightwayBooking');
+        const parsed = stored ? JSON.parse(stored) : null;
+        return parsed?.tripDate || parsed?.departureDate;
       } catch {
         return null;
       }
@@ -112,6 +113,7 @@ const SeatSelectionPage = () => {
     };
 
     sessionStorage.setItem('currentBooking', JSON.stringify(bookingData));
+    sessionStorage.setItem('rightwayBooking', JSON.stringify(bookingData));
     navigate('/booking/passenger', { state: bookingData });
   };
 

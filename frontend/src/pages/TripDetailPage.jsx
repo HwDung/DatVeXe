@@ -1,12 +1,21 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { tripService } from '../services/api';
 import '../styles/trip-detail.css';
 
 const TripDetailPage = () => {
   const { tripId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [result, setResult] = useState({ key: '', loading: true, trip: null, notFound: false, error: '' });
+  const savedSearch = (() => {
+    try {
+      return JSON.parse(sessionStorage.getItem('rightwaySearch') || '{}');
+    } catch {
+      return {};
+    }
+  })();
+  const passengers = searchParams.get('passengers') || savedSearch.passengers || '1';
 
   useEffect(() => {
     let isCurrentRequest = true;
@@ -171,8 +180,19 @@ const TripDetailPage = () => {
               className="btn-primary trip-book-button"
               type="button"
               onClick={() => {
+                const savedSearch = (() => {
+                  try {
+                    return JSON.parse(sessionStorage.getItem('rightwaySearch') || '{}');
+                  } catch {
+                    return {};
+                  }
+                })();
                 const today = new Date().toISOString().split('T')[0];
-                navigate(`/booking/seats?tripId=${trip.id}&date=${today}`, { state: { trip, tripDate: today } });
+                const passengers = savedSearch.passengers || '1';
+                sessionStorage.setItem('rightwaySearch', JSON.stringify({ ...savedSearch, passengers }));
+                navigate(`/booking/seats?tripId=${trip.id}&date=${today}&passengers=${passengers}`, {
+                  state: { trip, tripDate: today, passengers },
+                });
               }}
             >
               Chọn chuyến này <i className="bi bi-arrow-right" aria-hidden="true"></i>

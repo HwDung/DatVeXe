@@ -16,7 +16,7 @@ const Header = () => {
   const navItems = [
     { name: 'Trang chủ', path: '/' },
     { name: 'Tìm vé', path: '/search' },
-    { name: 'Tra cứu vé', path: '/lookup' },
+    { name: 'Vé đã đặt', path: '/lookup' },
     { name: 'Chuyến đi', path: '/search' },
   ];
 

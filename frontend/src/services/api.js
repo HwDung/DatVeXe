@@ -42,13 +42,14 @@ export const tripService = {
   search: (params) => api.get('/trips/search', { params }),
   getById: (id) => api.get(`/trips/${id}`),
   getSeats: (id, date) => api.get(`/trips/${id}/seats`, { params: { date } }),
+  getFilterOptions: () => api.get('/trips/filter-options'),
 };
 
 export const bookingService = {
   create: (data) => api.post('/bookings', data),
   lookup: (bookingCode, phone) => api.get('/bookings/lookup', { params: { bookingCode, phone } }),
-  getById: (id) => api.get(`/bookings/${id}`),
-  cancel: (id) => api.patch(`/bookings/${id}/cancel`),
+  getById: (id, phone) => api.get(`/bookings/${id}`, { params: phone ? { phone } : {} }),
+  cancel: (id, phone) => api.patch(`/bookings/${id}/cancel`, phone ? { phone } : {}),
   statusCheck: (codes) => api.get('/bookings/status-check', { params: { codes: Array.isArray(codes) ? codes.join(',') : codes } }),
   getMyBookings: (params) => api.get('/bookings/my-bookings', { params }),
 };

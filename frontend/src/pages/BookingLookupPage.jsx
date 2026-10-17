@@ -3,6 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { bookingService } from '../services/api';
 import { useNotification } from '../context/NotificationContext';
 import '../styles/auth.css';
+import '../styles/booking.css';
 
 const BookingLookupPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -77,7 +78,7 @@ const BookingLookupPage = () => {
     if (!booking) return;
     try {
       setCancelling(true);
-      const res = await bookingService.cancel(booking.id);
+      const res = await bookingService.cancel(booking.id, booking.passengerPhone);
       setBooking(res.data);
       setCancelModalOpen(false);
       addNotification({

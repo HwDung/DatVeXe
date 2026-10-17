@@ -1,5 +1,5 @@
 const service = require("./trips.service");
-const { tripSearchSchema } = require("./trips.schemas");
+const { tripSearchSchema, tripSeatsQuerySchema } = require("./trips.schemas");
 const { tripIdSchema } = require("./trip-detail.schemas");
 
 async function searchTrips(req, res, next) {
@@ -22,18 +22,24 @@ async function getTripById(req, res, next) {
   }
 }
 
-async function getTripSeats(req, res) {
+async function getTripSeats(req, res, next) {
   try {
-    const date = req.query.date;
-    if (!date) {
-      return res.status(400).json({ message: "Date is required" });
-    }
-    const seats = await service.getTripSeatsService(req.params.id, date);
+    const id = tripIdSchema.parse(req.params.id);
+    const { date } = tripSeatsQuerySchema.parse(req.query);
+    const seats = await service.getTripSeatsService(id, date);
     res.json(seats);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal server error" });
+    next(error);
   }
 }
 
-module.exports = { searchTrips, getTripById, getTripSeats };
+async function getFilterOptions(_req, res, next) {
+  try {
+    const options = await service.getFilterOptionsService();
+    res.json(options);
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = { searchTrips, getTripById, getTripSeats, getFilterOptions };

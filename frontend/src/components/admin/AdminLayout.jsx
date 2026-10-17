@@ -28,6 +28,7 @@ const AdminLayout = ({ children }) => {
     if (path.includes('promotions')) return 'Quản lý Khuyến mãi';
     if (path.includes('news')) return 'Quản lý Tin tức';
     if (path.includes('users')) return 'Quản lý Người dùng';
+    if (path.includes('reports')) return 'Thống kê & Báo cáo';
     return 'Admin Panel';
   };
 
@@ -43,6 +44,9 @@ const AdminLayout = ({ children }) => {
         <nav className="admin-menu">
           <NavLink to="/admin" end className={({ isActive }) => `admin-menu-item ${isActive ? 'active' : ''}`}>
             <i className="bi bi-speedometer2"></i> Dashboard
+          </NavLink>
+          <NavLink to="/admin/reports" className={({ isActive }) => `admin-menu-item ${isActive ? 'active' : ''}`}>
+            <i className="bi bi-file-earmark-bar-graph"></i> Thống kê & Báo cáo
           </NavLink>
           <NavLink to="/admin/trips" className={({ isActive }) => `admin-menu-item ${isActive ? 'active' : ''}`}>
             <i className="bi bi-bus-front"></i> Chuyến xe

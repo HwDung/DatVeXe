@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { adminService } from '../../services/adminApi';
-
 const AdminBookings = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);

@@ -20,7 +20,7 @@ const PaymentPage = () => {
   useEffect(() => {
     let data = location.state;
     if (!data) {
-      const stored = sessionStorage.getItem('currentBooking');
+      const stored = sessionStorage.getItem('currentBooking') || sessionStorage.getItem('rightwayBooking');
       if (stored) {
         try {
           data = JSON.parse(stored);
@@ -75,7 +75,10 @@ const PaymentPage = () => {
       // Save to notification context & local storage
       addSavedBooking(newBooking);
 
-      const routeName = trip.route ? `${trip.route.origin} → ${trip.route.destination}` : '';
+      const routeName = trip.route
+        ? `${trip.route.origin} → ${trip.route.destination}`
+        : `${trip.origin || ''} → ${trip.destination || ''}`;
+
       addNotification({
         title: 'Đặt vé thành công! 🎉',
         message: `Đơn vé ${newBooking.bookingCode} (${routeName}) đã được gửi tới hệ thống và đang chờ Admin duyệt.`,
@@ -86,6 +89,7 @@ const PaymentPage = () => {
 
       // Clear session
       sessionStorage.removeItem('currentBooking');
+      sessionStorage.removeItem('rightwayBooking');
 
       // Navigate to lookup page with success indicator
       navigate(`/lookup?code=${newBooking.bookingCode}&phone=${encodeURIComponent(passengerInfo.phone)}&success=1`);
@@ -104,8 +108,10 @@ const PaymentPage = () => {
   }
 
   const { trip, tripDate, selectedSeats, totalPrice, passengerInfo } = bookingData;
-  const routeName = trip.route ? `${trip.route.origin} → ${trip.route.destination}` : '';
-  const companyName = trip.company?.name || 'Nhà xe';
+  const routeName = trip.route
+    ? `${trip.route.origin} → ${trip.route.destination}`
+    : `${trip.origin || ''} → ${trip.destination || ''}`;
+  const companyName = trip.company?.name || trip.company || 'Nhà xe';
 
   return (
     <div className="booking-page">
@@ -243,11 +249,11 @@ const PaymentPage = () => {
             <div className="summary-row">
               <span className="summary-label">Ngày đi</span>
               <span className="summary-value">
-                {new Date(tripDate).toLocaleDateString('vi-VN', {
+                {tripDate ? new Date(tripDate).toLocaleDateString('vi-VN', {
                   day: '2-digit',
                   month: '2-digit',
                   year: 'numeric',
-                })}
+                }) : 'Hôm nay'}
               </span>
             </div>
             <div className="summary-row">
@@ -272,7 +278,7 @@ const PaymentPage = () => {
 
           <div className="summary-total">
             <span className="total-label">Tổng thanh toán</span>
-            <span className="total-amount">{totalPrice.toLocaleString('vi-VN')}đ</span>
+            <span className="total-amount">{(totalPrice || 0).toLocaleString('vi-VN')}đ</span>
           </div>
 
           <button
