@@ -7,7 +7,7 @@ const bookingsRouter = Router();
 // Lấy danh sách vé đã đặt của người dùng
 bookingsRouter.get("/my", optionalAuthenticate, ctrl.getMyBookings);
 
-bookingsRouter.post("/", ctrl.createBooking);
+bookingsRouter.post("/", optionalAuthenticate, ctrl.createBooking);
 bookingsRouter.get("/lookup", ctrl.lookupBooking);
 bookingsRouter.get("/me", authenticate, ctrl.listMyBookings);
 bookingsRouter.get("/:id", optionalAuthenticate, ctrl.getBooking);
