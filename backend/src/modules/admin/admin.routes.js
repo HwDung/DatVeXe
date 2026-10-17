@@ -175,9 +175,159 @@ const crudHandler = (model, includes) => ({
   },
 });
 
+// Explicit booking management for Admin
+adminRouter.get("/bookings", async (req, res) => {
+  try {
+    const { search, status, date } = req.query;
+    const where = {};
+
+    if (status && status.trim()) {
+      where.status = status.trim();
+    }
+
+    if (date && date.trim()) {
+      const tripDate = new Date(date);
+      if (!isNaN(tripDate.getTime())) {
+        where.tripDate = tripDate;
+      }
+    }
+
+    if (search && search.trim()) {
+      const term = search.trim();
+      where.OR = [
+        { bookingCode: { contains: term } },
+        { passengerName: { contains: term } },
+        { passengerPhone: { contains: term } },
+        { passengerEmail: { contains: term } },
+      ];
+    }
+
+    const bookings = await prisma.booking.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      include: {
+        trip: {
+          include: {
+            route: true,
+            company: true,
+            bus: true,
+          },
+        },
+      },
+    });
+
+    res.json(bookings);
+  } catch (error) {
+    console.error("Admin getBookings error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+adminRouter.get("/bookings/:id", async (req, res) => {
+  try {
+    const booking = await prisma.booking.findUnique({
+      where: { id: req.params.id },
+      include: {
+        trip: {
+          include: {
+            route: true,
+            company: true,
+            bus: true,
+          },
+        },
+        user: true,
+        seatStatuses: true,
+      },
+    });
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+    res.json(booking);
+  } catch (error) {
+    console.error("Admin getBooking error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+const handleUpdateBookingStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, paymentStatus } = req.body;
+
+    const booking = await prisma.booking.findUnique({
+      where: { id },
+      include: { seatStatuses: true },
+    });
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    const updateData = {};
+    if (status) updateData.status = status;
+    if (paymentStatus) updateData.paymentStatus = paymentStatus;
+
+    // Transaction to update booking and handle seat release if cancelled
+    const result = await prisma.$transaction(async (tx) => {
+      const updated = await tx.booking.update({
+        where: { id },
+        data: updateData,
+        include: {
+          trip: {
+            include: {
+              route: true,
+              company: true,
+              bus: true,
+            },
+          },
+        },
+      });
+
+      if (status === "cancelled") {
+        // Release seats
+        await tx.seatStatus.updateMany({
+          where: { bookingId: id },
+          data: { status: "available", bookingId: null },
+        });
+      } else if (status === "confirmed") {
+        // Ensure seats are booked
+        await tx.seatStatus.updateMany({
+          where: { bookingId: id },
+          data: { status: "booked" },
+        });
+      }
+
+      return updated;
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error("Admin updateBookingStatus error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+adminRouter.patch("/bookings/:id/status", handleUpdateBookingStatus);
+adminRouter.put("/bookings/:id", handleUpdateBookingStatus);
+
+adminRouter.delete("/bookings/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    await prisma.$transaction(async (tx) => {
+      await tx.seatStatus.updateMany({
+        where: { bookingId: id },
+        data: { status: "available", bookingId: null },
+      });
+      await tx.booking.delete({ where: { id } });
+    });
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Admin deleteBooking error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 const genericModels = [
   { name: "companies", model: prisma.busCompany, includes: { buses: true } },
-  { name: "bookings", model: prisma.booking, includes: { trip: { include: { route: true, company: true } } } },
   { name: "promotions", model: prisma.promotion, includes: undefined },
   { name: "news", model: prisma.news, includes: undefined },
 ];

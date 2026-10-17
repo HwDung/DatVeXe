@@ -47,8 +47,9 @@ const SearchPage = () => {
           arrivalTime: trip.arrivalTime,
           destination: trip.route?.destination || '',
           duration: trip.duration,
-          seatsAvailable: null,
+          seatsAvailable: trip.seatsAvailable ?? 40,
           price: `${Number(trip.price).toLocaleString('vi-VN')}đ`,
+          rawPrice: trip.price,
         })));
         setResultStatus({ key: requestKey, loading: false, error: '' });
       })
@@ -95,7 +96,7 @@ const SearchPage = () => {
           <div className="trip-list">
             {error && <p className="empty-trips" role="alert">{error}</p>}
             {!isLoading && !error && trips.map(trip => (
-              <TripCard key={trip.id} trip={trip} />
+              <TripCard key={trip.id} trip={trip} tripDate={searchParams.get('date')} />
             ))}
             {!isLoading && !error && trips.length === 0 && <p className="empty-trips">Không tìm thấy chuyến phù hợp. Hãy thử thay đổi bộ lọc.</p>}
           </div>

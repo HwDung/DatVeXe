@@ -167,7 +167,14 @@ const TripDetailPage = () => {
               <div><span>Thời gian</span><strong>{trip.duration}</strong></div>
               <div><span>Còn trống</span><strong>{trip.seatsAvailable == null ? 'Kiểm tra khi chọn chỗ' : `${trip.seatsAvailable} chỗ`}</strong></div>
             </div>
-            <button className="btn-primary trip-book-button" type="button" onClick={() => navigate('/booking/seats', { state: { trip } })}>
+            <button
+              className="btn-primary trip-book-button"
+              type="button"
+              onClick={() => {
+                const today = new Date().toISOString().split('T')[0];
+                navigate(`/booking/seats?tripId=${trip.id}&date=${today}`, { state: { trip, tripDate: today } });
+              }}
+            >
               Chọn chuyến này <i className="bi bi-arrow-right" aria-hidden="true"></i>
             </button>
             <p className="trip-booking-note"><i className="bi bi-shield-check" aria-hidden="true"></i> Giá vé hiển thị cho một hành khách</p>

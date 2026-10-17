@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { NotificationProvider } from './context/NotificationContext';
 import { AdminRoute, GuestRoute, ProtectedRoute } from './components/auth/RouteGuards';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
@@ -34,30 +35,9 @@ function MainLayout() {
           <Route path="/" element={<HomePage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/trips/:tripId" element={<TripDetailPage />} />
-          <Route
-            path="/booking/seats"
-            element={(
-              <ProtectedRoute>
-                <SeatSelectionPage />
-              </ProtectedRoute>
-            )}
-          />
-          <Route
-            path="/booking/passenger"
-            element={(
-              <ProtectedRoute>
-                <PassengerInfoPage />
-              </ProtectedRoute>
-            )}
-          />
-          <Route
-            path="/booking/payment"
-            element={(
-              <ProtectedRoute>
-                <PaymentPage />
-              </ProtectedRoute>
-            )}
-          />
+          <Route path="/booking/seats" element={<SeatSelectionPage />} />
+          <Route path="/booking/passenger" element={<PassengerInfoPage />} />
+          <Route path="/booking/payment" element={<PaymentPage />} />
           <Route path="/lookup" element={<BookingLookupPage />} />
           <Route
             path="/login"
@@ -114,7 +94,9 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppContent />
+        <NotificationProvider>
+          <AppContent />
+        </NotificationProvider>
       </AuthProvider>
     </BrowserRouter>
   );
