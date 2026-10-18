@@ -187,9 +187,12 @@ const TripDetailPage = () => {
                     return {};
                   }
                 })();
-
+                const today = new Date().toISOString().split('T')[0];
+                const passengers = savedSearch.passengers || '1';
                 sessionStorage.setItem('rightwaySearch', JSON.stringify({ ...savedSearch, passengers }));
-                navigate(`/booking/seats?passengers=${passengers}`, { state: { trip, passengers } });
+                navigate(`/booking/seats?tripId=${trip.id}&date=${today}&passengers=${passengers}`, {
+                  state: { trip, tripDate: today, passengers },
+                });
               }}
             >
               Chọn chuyến này <i className="bi bi-arrow-right" aria-hidden="true"></i>
