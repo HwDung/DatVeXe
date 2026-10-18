@@ -151,10 +151,13 @@ model SeatStatus {
   seatCode  String   @db.NVarChar(10) // A1, B2, C3, etc.
   status    String   @default("available") @db.NVarChar(20) // available, booked, held
   bookingId String?  @db.NVarChar(30)
+  ticketId  String?  @db.NVarChar(30)
   trip      Trip     @relation(fields: [tripId], references: [id], onUpdate: NoAction, onDelete: NoAction)
   booking   Booking? @relation(fields: [bookingId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  ticket    Ticket?  @relation(fields: [ticketId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 
   @@unique([tripId, tripDate, seatCode])
+  @@index([ticketId])
 }
 
 model Booking {
@@ -166,7 +169,7 @@ model Booking {
   passengerName   String       @db.NVarChar(120)
   passengerPhone  String       @db.NVarChar(20)
   passengerEmail  String       @db.NVarChar(254)
-  seatCode        String       @db.NVarChar(10)
+  seatCode        String       @db.NVarChar(200) // Comma-separated summary retained for existing clients
   totalPrice      Int
   status          String       @default("pending") @db.NVarChar(20) // pending, confirmed, cancelled, completed
   paymentMethod   String?      @db.NVarChar(50)
@@ -176,10 +179,30 @@ model Booking {
   trip            Trip         @relation(fields: [tripId], references: [id], onUpdate: NoAction, onDelete: NoAction)
   user            User?        @relation(fields: [userId], references: [id], onUpdate: NoAction, onDelete: NoAction)
   seatStatuses    SeatStatus[]
+  tickets         Ticket[]
 
   @@index([tripId, tripDate])
   @@index([userId])
   @@index([bookingCode])
+}
+
+model Ticket {
+  id             String       @id @default(cuid()) @db.NVarChar(30)
+  ticketCode     String       @unique @db.NVarChar(40)
+  bookingId      String       @db.NVarChar(30)
+  seatCode       String       @db.NVarChar(10)
+  passengerName  String       @db.NVarChar(120)
+  passengerPhone String       @db.NVarChar(20)
+  passengerEmail String       @db.NVarChar(254)
+  price          Int          // Fare snapshot in VND
+  status         String       @default("pending") @db.NVarChar(20) // pending, confirmed, cancelled, completed
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  booking        Booking      @relation(fields: [bookingId], references: [id], onDelete: NoAction)
+  seatStatuses   SeatStatus[]
+
+  @@unique([bookingId, seatCode])
+  @@index([bookingId, status])
 }
 
 model Promotion {
