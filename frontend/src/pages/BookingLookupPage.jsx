@@ -11,7 +11,7 @@ const BookingLookupPage = () => {
   const urlPhone = searchParams.get('phone') || '';
   const isSuccessRedirect = searchParams.get('success') === '1';
 
-  const { savedBookings, addNotification } = useNotification();
+  const { savedBookings, addNotification, addSavedBooking } = useNotification();
 
   const [bookingCode, setBookingCode] = useState(urlCode);
   const [phone, setPhone] = useState(urlPhone);
@@ -36,6 +36,9 @@ const BookingLookupPage = () => {
 
       const res = await bookingService.lookup(codeToLookup.trim(), phoneToLookup ? phoneToLookup.trim() : undefined);
       setBooking(res.data);
+      if (res.data) {
+        addSavedBooking(res.data);
+      }
     } catch (err) {
       console.error('Lookup error:', err);
       setBooking(null);

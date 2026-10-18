@@ -1,15 +1,30 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { bookingService } from '../services/api';
+import { useAuth } from './AuthContext';
 
 const NotificationContext = createContext();
 
-const STORAGE_KEY_NOTIFS = 'datvexe_notifications';
-const STORAGE_KEY_BOOKINGS = 'datvexe_my_saved_bookings';
-
 export const NotificationProvider = ({ children }) => {
+  const { user } = useAuth();
+
+  // Storage keys strictly scoped to the active account
+  const accountKey = user?.id ? `user_${user.id}` : 'guest';
+  const notifStorageKey = `datvexe_notifications_${accountKey}`;
+  const bookingsStorageKey = `datvexe_my_saved_bookings_${accountKey}`;
+
+  // Clean up legacy global storage keys to prevent cross-account pollution
+  useEffect(() => {
+    try {
+      localStorage.removeItem('datvexe_notifications');
+      localStorage.removeItem('datvexe_my_saved_bookings');
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const [notifications, setNotifications] = useState(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY_NOTIFS);
+      const saved = localStorage.getItem(notifStorageKey);
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -18,7 +33,7 @@ export const NotificationProvider = ({ children }) => {
 
   const [savedBookings, setSavedBookings] = useState(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY_BOOKINGS);
+      const saved = localStorage.getItem(bookingsStorageKey);
       return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
@@ -27,23 +42,83 @@ export const NotificationProvider = ({ children }) => {
 
   const [activeToast, setActiveToast] = useState(null);
 
-  // Sync notifications to localStorage
+  // When active account changes (login, logout, switch account), switch dataset immediately
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY_NOTIFS, JSON.stringify(notifications));
+      const savedNotifs = localStorage.getItem(notifStorageKey);
+      setNotifications(savedNotifs ? JSON.parse(savedNotifs) : []);
+
+      const savedB = localStorage.getItem(bookingsStorageKey);
+      setSavedBookings(savedB ? JSON.parse(savedB) : []);
+    } catch (e) {
+      console.error('Error reloading notifications for account:', e);
+      setNotifications([]);
+      setSavedBookings([]);
+    }
+
+    // For authenticated users, sync their actual bookings from the database
+    if (user?.id) {
+      bookingService
+        .getMyBookings()
+        .then((res) => {
+          const serverList = res.data;
+          if (Array.isArray(serverList) && serverList.length > 0) {
+            setSavedBookings((prev) => {
+              const map = new Map();
+              for (const b of prev) {
+                if (b.bookingCode) map.set(b.bookingCode, b);
+              }
+              for (const b of serverList) {
+                if (b.bookingCode) {
+                  const existing = map.get(b.bookingCode) || {};
+                  map.set(b.bookingCode, {
+                    id: b.id,
+                    bookingCode: b.bookingCode,
+                    passengerName: b.passengerName,
+                    passengerPhone: b.passengerPhone,
+                    status: b.status || 'pending',
+                    paymentStatus: b.paymentStatus,
+                    totalPrice: b.totalPrice,
+                    seatCode: b.seatCode,
+                    tripDate: b.tripDate,
+                    origin: b.trip?.route?.origin,
+                    destination: b.trip?.route?.destination,
+                    company: b.trip?.company?.name,
+                    departureTime: b.trip?.departureTime,
+                    createdAt: b.createdAt || new Date().toISOString(),
+                    ...existing,
+                    status: b.status || existing.status,
+                    paymentStatus: b.paymentStatus || existing.paymentStatus,
+                  });
+                }
+              }
+              return Array.from(map.values());
+            });
+          }
+        })
+        .catch(() => {
+          // Ignore network/sync errors in background
+        });
+    }
+  }, [accountKey, notifStorageKey, bookingsStorageKey, user?.id]);
+
+  // Sync notifications to account-scoped localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(notifStorageKey, JSON.stringify(notifications));
     } catch (e) {
       console.error('Failed to save notifications', e);
     }
-  }, [notifications]);
+  }, [notifications, notifStorageKey]);
 
-  // Sync saved bookings to localStorage
+  // Sync saved bookings to account-scoped localStorage
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY_BOOKINGS, JSON.stringify(savedBookings));
+      localStorage.setItem(bookingsStorageKey, JSON.stringify(savedBookings));
     } catch (e) {
       console.error('Failed to save bookings', e);
     }
-  }, [savedBookings]);
+  }, [savedBookings, bookingsStorageKey]);
 
   const addNotification = useCallback((notif) => {
     const item = {
@@ -112,12 +187,20 @@ export const NotificationProvider = ({ children }) => {
   }, []);
 
   // Background status check for user bookings: detects when Admin approves ticket
+  const savedBookingsRef = useRef(savedBookings);
   useEffect(() => {
-    if (savedBookings.length === 0) return;
+    savedBookingsRef.current = savedBookings;
+  }, [savedBookings]);
 
+  useEffect(() => {
     const checkStatus = async () => {
+      const currentList = savedBookingsRef.current;
+      if (!currentList || currentList.length === 0) return;
+
       try {
-        const codes = savedBookings.map((b) => b.bookingCode);
+        const codes = currentList.map((b) => b.bookingCode).filter(Boolean);
+        if (codes.length === 0) return;
+
         const res = await bookingService.statusCheck(codes);
         const latestList = res.data;
 
@@ -178,11 +261,10 @@ export const NotificationProvider = ({ children }) => {
       }
     };
 
-    // Check once immediately, then poll every 20 seconds
     checkStatus();
-    const interval = setInterval(checkStatus, 20000);
+    const interval = setInterval(checkStatus, 15000);
     return () => clearInterval(interval);
-  }, [savedBookings, addNotification]);
+  }, [addNotification]);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
