@@ -66,18 +66,55 @@ async function createBookingService(data) {
       throw new HttpError(409, "TRIP_UNAVAILABLE", "Chuyến xe hiện không hoạt động");
     }
 
-    // Check seat availability
+    const seatVariants = seatList.flatMap((s) => {
+      const clean = String(s).trim().toUpperCase();
+      const match = clean.match(/^([A-Za-z]+)0*(\d+)$/);
+      if (!match) return [clean];
+      const prefix = match[1];
+      const num = parseInt(match[2], 10);
+      const unpadded = `${prefix}${num}`;
+      const padded = `${prefix}${num < 10 ? `0${num}` : num}`;
+      return Array.from(new Set([clean, padded, unpadded]));
+    });
+
+    // Check seat availability in seatStatus
     const existingSeats = await tx.seatStatus.findMany({
       where: {
         tripId,
         tripDate: date,
-        seatCode: { in: seatList },
+        seatCode: { in: seatVariants },
       },
     });
 
     for (const s of existingSeats) {
       if (s.status !== "available") {
         throw new HttpError(409, "SEAT_UNAVAILABLE", `Ghế ${s.seatCode} đã có người đặt`);
+      }
+    }
+
+    // Also check active bookings for this trip & date
+    const activeBookings = await tx.booking.findMany({
+      where: {
+        tripId,
+        tripDate: date,
+        status: { not: "cancelled" },
+      },
+      select: { seatCode: true },
+    });
+
+    for (const ab of activeBookings) {
+      const bookedCodes = String(ab.seatCode)
+        .split(",")
+        .map((s) => s.trim().toUpperCase());
+      for (const reqSeat of seatList) {
+        const clean = String(reqSeat).trim().toUpperCase();
+        const match = clean.match(/^([A-Za-z]+)0*(\d+)$/);
+        const variants = match
+          ? [clean, `${match[1]}${parseInt(match[2], 10)}`, `${match[1]}${parseInt(match[2], 10) < 10 ? `0${parseInt(match[2], 10)}` : parseInt(match[2], 10)}`]
+          : [clean];
+        if (variants.some((v) => bookedCodes.includes(v))) {
+          throw new HttpError(409, "SEAT_UNAVAILABLE", `Ghế ${reqSeat} đã có người đặt`);
+        }
       }
     }
 
@@ -113,10 +150,16 @@ async function createBookingService(data) {
     });
 
     for (const code of seatList) {
-      const match = existingSeats.find((es) => es.seatCode === code);
-      if (match) {
+      const clean = String(code).trim().toUpperCase();
+      const match = clean.match(/^([A-Za-z]+)0*(\d+)$/);
+      const variants = match
+        ? [clean, `${match[1]}${parseInt(match[2], 10)}`, `${match[1]}${parseInt(match[2], 10) < 10 ? `0${parseInt(match[2], 10)}` : parseInt(match[2], 10)}`]
+        : [clean];
+
+      const matchSeat = existingSeats.find((es) => variants.includes(es.seatCode.toUpperCase()));
+      if (matchSeat) {
         await tx.seatStatus.update({
-          where: { id: match.id },
+          where: { id: matchSeat.id },
           data: { status: "booked", bookingId: newBooking.id },
         });
       } else {

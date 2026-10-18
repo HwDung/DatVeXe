@@ -92,8 +92,16 @@ const SeatSelectionPage = () => {
     fetchData();
   }, [resolvedTripId, resolvedTripDate]);
 
+  const isSeatBooked = (seatCode) => {
+    return bookedSeats.some((s) => {
+      const normS = String(s).replace(/^([A-Za-z]+)0*(\d+)$/, (_, p, d) => `${p.toUpperCase()}${parseInt(d, 10)}`);
+      const normTarget = String(seatCode).replace(/^([A-Za-z]+)0*(\d+)$/, (_, p, d) => `${p.toUpperCase()}${parseInt(d, 10)}`);
+      return normS === normTarget;
+    });
+  };
+
   const handleSeatClick = (seatCode) => {
-    if (bookedSeats.includes(seatCode)) return;
+    if (isSeatBooked(seatCode)) return;
 
     if (selectedSeats.includes(seatCode)) {
       setSelectedSeats(selectedSeats.filter((s) => s !== seatCode));
@@ -129,7 +137,7 @@ const SeatSelectionPage = () => {
         const pad = num < 10 ? `0${num}` : `${num}`;
         const seatCode = `${floorPrefix}${pad}`;
 
-        const isBooked = bookedSeats.includes(seatCode);
+        const isBooked = isSeatBooked(seatCode);
         const isSelected = selectedSeats.includes(seatCode);
 
         let className = 'seat';
