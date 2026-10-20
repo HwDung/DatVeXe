@@ -1,3 +1,4 @@
+const { Prisma } = require("@prisma/client");
 const service = require("./bookings.service");
 const {
   createBookingSchema,
@@ -7,13 +8,51 @@ const {
 } = require("./bookings.schemas");
 const { HttpError } = require("../../utils/http-error");
 
+/**
+ * Xử lý lỗi P2034 (write conflict / deadlock) từ SERIALIZABLE transaction.
+ * Khi hai request đồng thời tranh nhau ghế, SQL Server chọn một bên làm
+ * "deadlock victim" và throw P2034. Ta retry tối đa `maxRetries` lần.
+ * Sau khi retry mà vẫn lỗi (ghế thực sự đã bị lấy), sẽ ra 409.
+ *
+ * @template T
+ * @param {() => Promise<T>} fn
+ * @param {number} [maxRetries=2]
+ * @returns {Promise<T>}
+ */
+async function withConflictRetry(fn, maxRetries = 2) {
+  let lastError;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      const isConflict =
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2034";
+      if (!isConflict) throw error;
+      lastError = error;
+      // Chờ ngắn trước khi retry (exponential backoff nhẹ)
+      if (attempt < maxRetries) {
+        await new Promise((resolve) => setTimeout(resolve, 20 * (attempt + 1)));
+      }
+    }
+  }
+  // Hết retry — ghế nhiều khả năng đã bị người khác lấy
+  throw new HttpError(
+    409,
+    "SEAT_UNAVAILABLE",
+    "Seat is no longer available due to high demand. Please try again.",
+  );
+}
+
 async function createBooking(req, res, next) {
   try {
     const input = createBookingSchema.parse(req.body);
-    const booking = await service.createBookingService({
-      ...input,
-      userId: req.auth?.userId || req.user?.id || req.body?.userId,
-    });
+    const booking = await withConflictRetry(() =>
+      service.createBookingService({
+        ...input,
+        userId: req.auth?.userId,
+      }),
+    );
     res.status(201).json(booking);
   } catch (error) {
     next(error);
