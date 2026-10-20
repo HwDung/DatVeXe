@@ -50,6 +50,8 @@ export const bookingService = {
   lookup: (bookingCode, phone) => api.get('/bookings/lookup', { params: { bookingCode, phone } }),
   getById: (id, phone) => api.get(`/bookings/${id}`, { params: phone ? { phone } : {} }),
   cancel: (id, phone) => api.patch(`/bookings/${id}/cancel`, phone ? { phone } : {}),
+  statusCheck: (codes) => api.get('/bookings/status-check', { params: { codes: Array.isArray(codes) ? codes.join(',') : codes } }),
+  getMyBookings: (params) => api.get('/bookings/my-bookings', { params }),
 };
 
 export const routeService = {

@@ -1,17 +1,9 @@
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 const TripCard = ({ trip, tripDate }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const savedSearch = (() => {
-    try {
-      return JSON.parse(sessionStorage.getItem('rightwaySearch') || '{}');
-    } catch {
-      return {};
-    }
-  })();
-  const passengers = searchParams.get('passengers') || savedSearch.passengers || '1';
 
   const formatCurrency = (amount) => {
     if (typeof amount === 'string' && amount.includes('đ')) return amount;
@@ -19,10 +11,15 @@ const TripCard = ({ trip, tripDate }) => {
   };
 
   const handleSelectTrip = () => {
-    const params = new URLSearchParams();
-    if (trip.id) params.set('tripId', trip.id);
-    if (tripDate) params.set('date', tripDate);
-    navigate(`/booking/seats?${params.toString()}`, { state: { trip } });
+    const dateParam =
+      tripDate ||
+      searchParams.get('date') ||
+      trip.availableDate ||
+      new Date().toISOString().split('T')[0];
+
+    navigate(`/booking/seats?tripId=${trip.id}&date=${dateParam}`, {
+      state: { trip, tripDate: dateParam },
+    });
   };
 
   return (
@@ -44,7 +41,7 @@ const TripCard = ({ trip, tripDate }) => {
               <div className="bus-type">{trip.busType}</div>
             </div>
             <div className="trip-rating">
-              <i className="bi bi-star-fill"></i> {trip.rating || 4.5} {trip.reviews !== undefined ? `(${trip.reviews})` : ''}
+              <i className="bi bi-star-fill" style={{ color: '#F59E0B' }}></i> {trip.rating || 4.5} ({trip.reviews || 0})
             </div>
           </div>
 

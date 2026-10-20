@@ -64,18 +64,53 @@ async function searchTripsService(query) {
       route: true,
       bus: true,
       company: true,
-      seatStatuses: date ? {
-        where: { tripDate: date, status: { in: ["booked", "held"] } },
-      } : false,
+      seatStatuses: date
+        ? {
+            where: {
+              tripDate: {
+                gte: new Date(`${date.toISOString().slice(0, 10)}T00:00:00.000Z`),
+                lte: new Date(`${date.toISOString().slice(0, 10)}T23:59:59.999Z`),
+              },
+              status: { in: ["booked", "held"] },
+            },
+            select: { seatCode: true, status: true },
+          }
+        : false,
+      bookings: date
+        ? {
+            where: {
+              tripDate: {
+                gte: new Date(`${date.toISOString().slice(0, 10)}T00:00:00.000Z`),
+                lte: new Date(`${date.toISOString().slice(0, 10)}T23:59:59.999Z`),
+              },
+              status: { not: "cancelled" },
+            },
+            select: { seatCode: true },
+          }
+        : false,
     },
     orderBy: sortOptions[sort] || { departureTime: "asc" },
   });
 
   return trips.map((trip) => {
-    const bookedCount = trip.seatStatuses ? trip.seatStatuses.length : 0;
+    const bookedSeatCodes = new Set();
+    if (trip.seatStatuses) {
+      for (const s of trip.seatStatuses) {
+        if (s.seatCode) bookedSeatCodes.add(s.seatCode.trim().toUpperCase());
+      }
+    }
+    if (trip.bookings) {
+      for (const b of trip.bookings) {
+        if (b.seatCode) {
+          const parts = String(b.seatCode).split(",").map((p) => p.trim().toUpperCase()).filter(Boolean);
+          for (const p of parts) bookedSeatCodes.add(p);
+        }
+      }
+    }
+
     const totalSeats = trip.bus?.totalSeats || 40;
-    const seatsAvailable = Math.max(0, totalSeats - bookedCount);
-    const { seatStatuses, ...rest } = trip;
+    const seatsAvailable = Math.max(0, totalSeats - bookedSeatCodes.size);
+    const { seatStatuses, bookings, ...rest } = trip;
     return { ...rest, seatsAvailable };
   });
 }
@@ -121,6 +156,22 @@ async function getTripByIdService(id) {
   return trip;
 }
 
+function normalizeSeat(code) {
+  if (!code) return "";
+  return String(code).trim().toUpperCase();
+}
+
+function getSeatVariants(code) {
+  const clean = normalizeSeat(code);
+  const match = clean.match(/^([A-Za-z]+)0*(\d+)$/);
+  if (!match) return [clean];
+  const prefix = match[1];
+  const num = parseInt(match[2], 10);
+  const unpadded = `${prefix}${num}`;
+  const padded = `${prefix}${num < 10 ? `0${num}` : num}`;
+  return Array.from(new Set([clean, padded, unpadded]));
+}
+
 async function getTripSeatsService(id, date) {
   const trip = await prisma.trip.findUnique({
     where: { id },
@@ -130,24 +181,83 @@ async function getTripSeatsService(id, date) {
     throw new HttpError(404, "TRIP_NOT_FOUND", "Trip not found");
   }
 
-  const statuses = await prisma.seatStatus.findMany({
-    where: {
-      tripId: id,
-      tripDate: date,
-    },
-    select: { seatCode: true, status: true },
-  });
+  const targetDate = date instanceof Date ? date : new Date(date);
+  const dateStr = targetDate.toISOString().slice(0, 10);
+  const startOfDay = new Date(`${dateStr}T00:00:00.000Z`);
+  const endOfDay = new Date(`${dateStr}T23:59:59.999Z`);
 
-  const statusBySeatCode = new Map(statuses.map(({ seatCode, status }) => [seatCode, status]));
+  const [statuses, activeBookings] = await Promise.all([
+    prisma.seatStatus.findMany({
+      where: {
+        tripId: id,
+        tripDate: { gte: startOfDay, lte: endOfDay },
+      },
+      select: { seatCode: true, status: true },
+    }),
+    prisma.booking.findMany({
+      where: {
+        tripId: id,
+        tripDate: { gte: startOfDay, lte: endOfDay },
+        status: { not: "cancelled" },
+      },
+      select: { seatCode: true, status: true },
+    }),
+  ]);
+
+  const statusBySeatCode = new Map();
+
+  for (const s of statuses) {
+    if (s.status !== "available") {
+      for (const variant of getSeatVariants(s.seatCode)) {
+        statusBySeatCode.set(variant, s.status);
+      }
+    }
+  }
+
+  for (const b of activeBookings) {
+    const seats = String(b.seatCode)
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    for (const seat of seats) {
+      for (const variant of getSeatVariants(seat)) {
+        statusBySeatCode.set(variant, "booked");
+      }
+    }
+  }
+
+  const totalSeats = trip.bus?.totalSeats || 36;
+  const half = Math.max(18, Math.ceil(totalSeats / 2));
+  const seatCodesSet = new Set();
+
+  for (let i = 1; i <= half; i++) {
+    const pad = i < 10 ? `0${i}` : `${i}`;
+    seatCodesSet.add(`A${pad}`);
+    seatCodesSet.add(`A${i}`);
+    seatCodesSet.add(`B${pad}`);
+    seatCodesSet.add(`B${i}`);
+  }
+
   const columns = ["A", "B", "C"];
-
-  return Array.from({ length: trip.bus.totalSeats }, (_, index) => {
+  for (let index = 0; index < totalSeats; index++) {
     const seatCode = `${columns[index % columns.length]}${Math.floor(index / columns.length) + 1}`;
-    return {
-      seatCode,
-      status: statusBySeatCode.get(seatCode) || "available",
-    };
-  });
+    seatCodesSet.add(seatCode);
+  }
+
+  for (const code of statusBySeatCode.keys()) {
+    seatCodesSet.add(code);
+  }
+
+  return Array.from(seatCodesSet).map((seatCode) => ({
+    seatCode,
+    status: statusBySeatCode.get(seatCode) || "available",
+  }));
 }
 
-module.exports = { searchTripsService, getTripByIdService, getTripSeatsService, getFilterOptionsService };
+module.exports = {
+  searchTripsService,
+  getTripByIdService,
+  getTripSeatsService,
+  getFilterOptionsService,
+  getSeatVariants,
+};
