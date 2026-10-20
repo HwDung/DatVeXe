@@ -8,7 +8,9 @@ function notFoundHandler(_request, _response, next) {
 
 function errorHandler(error, _request, response, _next) {
   if (error instanceof HttpError) {
-    response.status(error.status).json({ error: { code: error.code, message: error.message } });
+    const payload = { code: error.code, message: error.message };
+    if (error.details !== undefined) payload.details = error.details;
+    response.status(error.status).json({ error: payload });
     return;
   }
 
