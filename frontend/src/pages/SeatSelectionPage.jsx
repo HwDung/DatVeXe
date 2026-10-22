@@ -58,29 +58,16 @@ const SeatSelectionPage = () => {
         setError('');
 
         const promises = [
+          tripService.getById(resolvedTripId),
           tripService.getSeats(resolvedTripId, resolvedTripDate).catch(() => ({ data: [] })),
         ];
 
-        if (!trip) {
-          promises.unshift(tripService.getById(resolvedTripId));
-        }
-
         const results = await Promise.all(promises);
-
-        if (!trip) {
-          setTrip(results[0].data);
-          const seatsRes = results[1];
-          const booked = (seatsRes?.data || [])
-            .filter((s) => s.status === 'booked' || s.status === 'held')
-            .map((s) => s.seatCode);
-          setBookedSeats(booked);
-        } else {
-          const seatsRes = results[0];
-          const booked = (seatsRes?.data || [])
-            .filter((s) => s.status === 'booked' || s.status === 'held')
-            .map((s) => s.seatCode);
-          setBookedSeats(booked);
-        }
+        setTrip(results[0].data);
+        const booked = (results[1]?.data || [])
+          .filter((s) => s.status === 'booked' || s.status === 'held')
+          .map((s) => s.seatCode);
+        setBookedSeats([...new Set(booked.map((code) => code.replace(/^([A-Z])0+(\d+)$/, '$1$2')))]);
       } catch (err) {
         console.error('Error loading trip details:', err);
         setError('Không thể tải thông tin chuyến xe. Vui lòng thử lại sau.');
@@ -125,17 +112,21 @@ const SeatSelectionPage = () => {
     navigate('/booking/passenger', { state: bookingData });
   };
 
-  // Generate seats for 2 floors (Lower: A01..A18, Upper: B01..B18)
+  // Split the bus's canonical A/B/C seat codes between two floors.
   const renderFloorSeats = (floorPrefix) => {
     const seats = [];
-    const rows = 6;
+    const totalSeats = trip?.bus?.totalSeats || trip?.totalSeats || 40;
+    const floorSize = Math.ceil(totalSeats / 2);
+    const floorStart = floorPrefix === 'A' ? 0 : floorSize;
+    const floorEnd = Math.min(floorStart + floorSize, totalSeats);
+    const rows = Math.ceil((floorEnd - floorStart) / 3);
     const cols = ['1', '2', '3'];
 
     for (let r = 1; r <= rows; r++) {
       for (const c of cols) {
-        const num = (r - 1) * 3 + parseInt(c);
-        const pad = num < 10 ? `0${num}` : `${num}`;
-        const seatCode = `${floorPrefix}${pad}`;
+        const seatIndex = floorStart + (r - 1) * 3 + parseInt(c) - 1;
+        if (seatIndex >= floorEnd) continue;
+        const seatCode = `${['A', 'B', 'C'][seatIndex % 3]}${Math.floor(seatIndex / 3) + 1}`;
 
         const isBooked = isSeatBooked(seatCode);
         const isSelected = selectedSeats.includes(seatCode);
@@ -233,7 +224,7 @@ const SeatSelectionPage = () => {
 
             <div className="seat-legend">
               <div className="legend-item">
-                <div className="legend-box available"></div> Trống ({36 - bookedSeats.length} chỗ)
+                <div className="legend-box available"></div> Trống ({Math.max(0, (trip.bus?.totalSeats || 40) - bookedSeats.length)} chỗ)
               </div>
               <div className="legend-item">
                 <div className="legend-box selected"></div> Đang chọn ({selectedSeats.length})

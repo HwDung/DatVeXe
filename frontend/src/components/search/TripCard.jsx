@@ -17,7 +17,14 @@ const TripCard = ({ trip, tripDate }) => {
       trip.availableDate ||
       new Date().toISOString().split('T')[0];
 
-    navigate(`/booking/seats?tripId=${trip.id}&date=${dateParam}`, {
+    const bookingParams = new URLSearchParams({
+      tripId: trip.id,
+      date: dateParam,
+      origin: trip.origin || searchParams.get('origin') || '',
+      destination: trip.destination || searchParams.get('destination') || '',
+      passengers: searchParams.get('passengers') || '1',
+    });
+    navigate(`/booking/seats?${bookingParams}`, {
       state: { trip, tripDate: dateParam },
     });
   };
