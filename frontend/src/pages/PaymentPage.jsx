@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useState } from 'react';
 import BookingSteps from '../components/booking/BookingSteps';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -79,32 +78,6 @@ const PaymentPage = () => {
       const routeName = trip.route
         ? `${trip.route.origin} → ${trip.route.destination}`
         : `${trip.origin || ''} → ${trip.destination || ''}`;
-    // 2. Thử gọi backend API
-    try {
-      if (trip?.id) {
-        const tripDate = /^\d{4}-\d{2}-\d{2}$/.test(departureDate)
-          ? departureDate
-          : (() => {
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const day = String(today.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-          })();
-        await bookingService.create({
-          tripId: trip.id,
-          tripDate,
-          seatCodes: selectedSeats,
-          passengerName: passenger.name,
-          passengerPhone: passenger.phone,
-          passengerEmail: passenger.email,
-          paymentMethod,
-        });
-      }
-    } catch {
-      // Cho phép offline / mock tiếp tục
-    }
-
       addNotification({
         title: 'Đặt vé thành công! 🎉',
         message: `Đơn vé ${newBooking.bookingCode} (${routeName}) đã được gửi tới hệ thống và đang chờ Admin duyệt.`,
