@@ -114,3 +114,8 @@ Trạng thái không hợp lệ hoặc không thể chuyển sẽ trả HTTP 409
 - ID tuyến/xe/nhà xe phải tồn tại và xe phải thuộc đúng nhà xe. Giá phải là số nguyên dương; thời gian dùng `HH:mm`; ngày có dạng `YYYY-MM-DD` hoặc ô ngày Excel; `isActive` chấp nhận boolean hoặc `1`/`0`. Bỏ trống `availableDate` nghĩa là chuyến định kỳ.
 - Preview trả `totalRows`, `validRows`, `invalidRows` và tối đa 100 dòng xem trước kèm lỗi từng dòng. Import kiểm tra lại file, bỏ qua dòng sai/trùng và trả `importedRows`, `failedRows`, `validationFailures`, `importFailures`. Trùng lịch được xác định theo tuyến, xe, nhà xe, giờ khởi hành và ngày chạy; dòng lỗi không được ghi vào database.
 - Giao diện tại `/admin/trips` cho phép chọn file, chọn sheet tùy chọn, xem lỗi theo dòng/cột trước khi ghi, xác nhận import và xem số dòng thành công/thất bại. Backend tests chạy bằng `npm test` trong thư mục `backend`.
+
+### Xuất chuyến xe ra Excel
+
+- `GET /api/admin/trips/export-excel` xuất danh sách chuyến xe ra `.xlsx`. Endpoint nằm trong router Admin, yêu cầu xác thực và vai trò `admin`; workbook gồm mã chuyến, tuyến, xe, nhà xe, giờ đi/đến, thời lượng, giá vé, ngày chạy và trạng thái.
+- Trang `/admin/trips` có nút **Xuất Excel** để tải file về. Nếu không có chuyến xe, API trả HTTP 404 với mã `NO_TRIPS_TO_EXPORT`; các lỗi khác được chuyển qua error handler chung.

@@ -6,6 +6,7 @@ export const adminService = {
   
   // Trips
   getTrips: (params) => api.get('/admin/trips', { params }),
+  exportTripsExcel: () => api.get('/admin/trips/export-excel', { responseType: 'blob' }),
   createTrip: (data) => api.post('/admin/trips', data),
   updateTrip: (id, data) => api.put(`/admin/trips/${id}`, data),
   deleteTrip: (id) => api.delete(`/admin/trips/${id}`),
