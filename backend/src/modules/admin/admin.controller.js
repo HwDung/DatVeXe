@@ -1,9 +1,48 @@
 const { z } = require("zod");
 const adminService = require("./admin.service");
+const { createUserSchema, updateUserSchema, userIdSchema } = require("./users.schemas");
 
 async function listUsers(_request, response, next) {
   try {
     response.json({ users: await adminService.listUsers() });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function getUser(request, response, next) {
+  try {
+    const userId = userIdSchema.parse(request.params.userId);
+    response.json({ user: await adminService.getUser(userId) });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function createUser(request, response, next) {
+  try {
+    const input = createUserSchema.parse(request.body);
+    response.status(201).json({ user: await adminService.createUser(input) });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function updateUser(request, response, next) {
+  try {
+    const userId = userIdSchema.parse(request.params.userId);
+    const input = updateUserSchema.parse(request.body);
+    response.json({ user: await adminService.updateUser(userId, input) });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function deleteUser(request, response, next) {
+  try {
+    const userId = userIdSchema.parse(request.params.userId);
+    await adminService.deleteUser(userId, request.auth.userId);
+    response.status(204).end();
   } catch (error) {
     next(error);
   }
@@ -30,4 +69,12 @@ async function listRoles(_request, response, next) {
   }
 }
 
-module.exports = { listUsers, replaceUserRoles, listRoles };
+module.exports = {
+  listUsers,
+  getUser,
+  createUser,
+  updateUser,
+  deleteUser,
+  replaceUserRoles,
+  listRoles,
+};

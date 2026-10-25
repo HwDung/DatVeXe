@@ -15,12 +15,13 @@ const AdminUsers = () => {
   const fetchUsers = async () => {
     try {
       const res = await adminService.getUsers();
-      if (res?.data && Array.isArray(res.data) && res.data.length > 0) {
-        setUsers(res.data.map(u => ({
+      const responseUsers = Array.isArray(res?.data) ? res.data : res?.data?.users;
+      if (Array.isArray(responseUsers)) {
+        setUsers(responseUsers.map(u => ({
           id: u.id,
           email: u.email,
           fullName: u.fullName || 'Khách hàng',
-          role: u.roles?.[0]?.role?.name || 'USER',
+          role: typeof u.roles?.[0] === 'string' ? u.roles[0] : u.roles?.[0]?.role?.name || 'USER',
           createdAt: u.createdAt ? new Date(u.createdAt).toLocaleDateString('vi-VN') : '01/01/2025',
         })));
       }

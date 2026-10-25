@@ -40,6 +40,10 @@ export const adminService = {
   
   // Users
   getUsers: (params) => api.get('/admin/users', { params }),
+  getUser: (id) => api.get(`/admin/users/${id}`),
+  createUser: (data) => api.post('/admin/users', data),
+  updateUser: (id, data) => api.patch(`/admin/users/${id}`, data),
+  deleteUser: (id) => api.delete(`/admin/users/${id}`),
   
   // Reports & Analytics
   getReports: (params) => api.get('/admin/reports', { params }),
