@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { adminService } from '../../services/adminApi';
 //
 const DEFAULT_TRIPS = [
@@ -12,6 +12,13 @@ const AdminTrips = () => {
   const [trips, setTrips] = useState(DEFAULT_TRIPS);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentTrip, setCurrentTrip] = useState(null);
+  const [importFile, setImportFile] = useState(null);
+  const [importSheetName, setImportSheetName] = useState('');
+  const [importPreview, setImportPreview] = useState(null);
+  const [importResult, setImportResult] = useState(null);
+  const [importError, setImportError] = useState('');
+  const [isPreviewingImport, setIsPreviewingImport] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
 
   const fetchTrips = async () => {
     try {
@@ -33,8 +40,73 @@ const AdminTrips = () => {
   };
 
   useEffect(() => {
-    fetchTrips();
+    let isCurrent = true;
+    adminService.getTrips()
+      .then((res) => {
+        if (isCurrent && res?.data && Array.isArray(res.data) && res.data.length > 0) {
+          setTrips(res.data.map(t => ({
+            id: t.id,
+            route: t.route ? `${t.route.origin} - ${t.route.destination}` : (t.route || 'Chưa chọn tuyến'),
+            company: t.company?.name || t.company || 'Phương Trang',
+            departureTime: t.departureTime || '08:00',
+            arrivalTime: t.arrivalTime || '14:00',
+            price: t.price || 250000,
+            status: t.isActive ? 'Đang mở bán' : 'Tạm dừng',
+          })));
+        }
+      })
+      .catch(() => {
+        // Keep fallback trips
+      });
+    return () => {
+      isCurrent = false;
+    };
   }, []);
+
+  const handleImportFileChange = (event) => {
+    setImportFile(event.target.files?.[0] || null);
+    setImportPreview(null);
+    setImportResult(null);
+    setImportError('');
+  };
+
+  const handlePreviewImport = async () => {
+    if (!importFile) {
+      setImportError('Vui lòng chọn file .xlsx trước khi xem trước.');
+      return;
+    }
+    setIsPreviewingImport(true);
+    setImportError('');
+    setImportResult(null);
+    try {
+      const response = await adminService.previewTripImport(importFile, importSheetName.trim() || undefined);
+      setImportPreview(response.data);
+    } catch (error) {
+      setImportPreview(null);
+      setImportError(error.response?.data?.message || 'Không thể kiểm tra file Excel.');
+    } finally {
+      setIsPreviewingImport(false);
+    }
+  };
+
+  const handleImportTrips = async () => {
+    if (!importFile || !importPreview) return;
+    if (!window.confirm(`Xác nhận import lại file? Hệ thống sẽ kiểm tra lại và chỉ lưu dòng hợp lệ.`)) return;
+
+    setIsImporting(true);
+    setImportError('');
+    setImportResult(null);
+    try {
+      const response = await adminService.importTrips(importFile, importSheetName.trim() || undefined);
+      setImportResult(response.data);
+      setImportPreview(null);
+      await fetchTrips();
+    } catch (error) {
+      setImportError(error.response?.data?.message || 'Không thể import file Excel.');
+    } finally {
+      setIsImporting(false);
+    }
+  };
 
   const handleOpenModal = (trip = null) => {
     setCurrentTrip(trip || { route: '', company: '', departureTime: '', arrivalTime: '', price: 0, status: 'Đang mở bán' });
@@ -81,6 +153,91 @@ const AdminTrips = () => {
           <i className="bi bi-plus-lg"></i> Thêm chuyến
         </button>
       </div>
+
+      <section className="admin-table-container" aria-labelledby="trip-import-heading" style={{ padding: '20px', marginBottom: '24px' }}>
+        <h3 id="trip-import-heading" style={{ marginTop: 0 }}>Import chuyến xe từ Excel</h3>
+        <p>Chọn file .xlsx để kiểm tra trước. Preview không lưu dữ liệu; khi xác nhận, hệ thống kiểm tra lại và chỉ import các dòng hợp lệ.</p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'end', gap: '12px' }}>
+          <label className="form-group" style={{ margin: 0 }}>
+            <span>File Excel (.xlsx)</span>
+            <input type="file" className="form-control" accept=".xlsx" onChange={handleImportFileChange} />
+          </label>
+          <label className="form-group" style={{ margin: 0 }}>
+            <span>Tên sheet (không bắt buộc)</span>
+            <input
+              type="text"
+              className="form-control"
+              value={importSheetName}
+              maxLength={31}
+              placeholder="Mặc định: sheet đầu tiên"
+              onChange={(event) => {
+                setImportSheetName(event.target.value);
+                setImportPreview(null);
+                setImportResult(null);
+              }}
+            />
+          </label>
+          <button type="button" className="btn btn-secondary" onClick={handlePreviewImport} disabled={!importFile || isPreviewingImport || isImporting}>
+            {isPreviewingImport ? 'Đang kiểm tra...' : 'Xem trước'}
+          </button>
+          <button type="button" className="btn btn-primary" onClick={handleImportTrips} disabled={!importPreview || importPreview.validRows === 0 || isPreviewingImport || isImporting}>
+            {isImporting ? 'Đang import...' : 'Xác nhận Import'}
+          </button>
+        </div>
+        {importFile && <p style={{ marginBottom: 0, marginTop: '8px' }}>Đã chọn: {importFile.name}</p>}
+        {importError && <div role="alert" className="alert alert-danger" style={{ marginTop: '16px' }}>{importError}</div>}
+
+        {importPreview && (
+          <div style={{ marginTop: '16px' }}>
+            <strong>Sheet: {importPreview.sheetName}</strong>
+            <p role="status">
+              Tổng {importPreview.totalRows} dòng — hợp lệ: {importPreview.validRows}, không hợp lệ: {importPreview.invalidRows}
+              {importPreview.previewLimit ? ` (hiển thị ${importPreview.preview.length}/${importPreview.totalRows} dòng)` : ''}
+            </p>
+            <div style={{ overflowX: 'auto' }}>
+              <table className="admin-table">
+                <thead><tr><th>Dòng Excel</th><th>Trạng thái</th><th>Lỗi theo cột</th></tr></thead>
+                <tbody>
+                  {importPreview.preview.map((row) => (
+                    <tr key={row.rowNumber}>
+                      <td>{row.rowNumber}</td>
+                      <td>{row.status === 'valid' ? 'Hợp lệ' : 'Không hợp lệ'}</td>
+                      <td>{row.errors.length
+                        ? row.errors.map((error, index) => (
+                          <div key={`${error.field}-${index}`}><strong>{error.field}:</strong> {error.message}</div>
+                        ))
+                        : 'Không có lỗi'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {importResult && (
+          <div role="status" style={{ marginTop: '16px' }}>
+            <strong>Kết quả import — sheet {importResult.sheetName}</strong>
+            <p>Tổng {importResult.totalRows} dòng: thành công {importResult.importedRows}, thất bại {importResult.failedRows}.</p>
+            {[...importResult.validationFailures, ...importResult.importFailures].length > 0 && (
+              <div style={{ overflowX: 'auto' }}>
+                <table className="admin-table">
+                  <thead><tr><th>Dòng Excel</th><th>Loại lỗi</th><th>Chi tiết</th></tr></thead>
+                  <tbody>
+                    {[...importResult.validationFailures, ...importResult.importFailures].map((failure, index) => (
+                      <tr key={`${failure.rowNumber}-${failure.code}-${index}`}>
+                        <td>{failure.rowNumber}</td>
+                        <td>{failure.code}</td>
+                        <td>{failure.message || failure.errors?.map((error) => `${error.field}: ${error.message}`).join('; ')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
 
       <div className="admin-table-container">
         <div className="admin-filters">
