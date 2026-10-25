@@ -22,9 +22,44 @@ function serializeUser(user) {
     id: user.id,
     email: user.email,
     fullName: user.fullName,
+    isLocked: user.isLocked,
+    status: user.isLocked ? "locked" : "active",
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
     roles: user.roles.map(({ role }) => role.name),
+  };
+}
+
+async function getUserStatus(userId) {
+  const user = await adminModel.findUserStatus(userId);
+  if (!user) {
+    throw new HttpError(404, "USER_NOT_FOUND", "User not found");
+  }
+  return {
+    userId: user.id,
+    isLocked: user.isLocked,
+    status: user.isLocked ? "locked" : "active",
+  };
+}
+
+async function changeUserLockStatus(userId, isLocked) {
+  const result = await adminModel.changeUserLockStatus(userId, isLocked);
+  if (result.result === "not_found") {
+    throw new HttpError(404, "USER_NOT_FOUND", "User not found");
+  }
+  if (result.result === "already_locked") {
+    throw new HttpError(409, "ACCOUNT_ALREADY_LOCKED", "User account is already locked");
+  }
+  if (result.result === "not_locked") {
+    throw new HttpError(409, "ACCOUNT_NOT_LOCKED", "User account is not locked");
+  }
+  if (result.result === "conflict") {
+    throw new HttpError(409, "ACCOUNT_STATUS_CONFLICT", "User account status changed; retry the request");
+  }
+  return {
+    userId: result.user.id,
+    isLocked: result.user.isLocked,
+    status: result.user.isLocked ? "locked" : "active",
   };
 }
 
@@ -111,6 +146,8 @@ async function listRoles() {
 module.exports = {
   listUsers,
   getUser,
+  getUserStatus,
+  changeUserLockStatus,
   createUser,
   updateUser,
   deleteUser,

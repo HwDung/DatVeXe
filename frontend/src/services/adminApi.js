@@ -44,6 +44,9 @@ export const adminService = {
   createUser: (data) => api.post('/admin/users', data),
   updateUser: (id, data) => api.patch(`/admin/users/${id}`, data),
   deleteUser: (id) => api.delete(`/admin/users/${id}`),
+  getUserStatus: (id) => api.get(`/admin/users/${id}/status`),
+  lockUser: (id) => api.post(`/admin/users/${id}/lock`),
+  unlockUser: (id) => api.post(`/admin/users/${id}/unlock`),
   
   // Reports & Analytics
   getReports: (params) => api.get('/admin/reports', { params }),

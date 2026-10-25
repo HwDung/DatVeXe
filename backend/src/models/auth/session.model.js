@@ -26,6 +26,7 @@ function findActiveSessionById(sessionId, userId, now) {
           id: true,
           email: true,
           fullName: true,
+          isLocked: true,
           roles: {
             include: {
               role: {
@@ -36,6 +37,20 @@ function findActiveSessionById(sessionId, userId, now) {
         },
       },
     },
+  });
+}
+
+function findLockedSessionById(sessionId, userId) {
+  return prisma.session.findFirst({
+    where: { id: sessionId, userId, user: { isLocked: true } },
+    select: { id: true },
+  });
+}
+
+function findLockedSessionByRefreshHash(refreshTokenHash) {
+  return prisma.session.findFirst({
+    where: { refreshTokenHash, user: { isLocked: true } },
+    select: { id: true },
   });
 }
 
@@ -62,6 +77,8 @@ module.exports = {
   createSessionRecord,
   findActiveSessionByRefreshHash,
   findActiveSessionById,
+  findLockedSessionById,
+  findLockedSessionByRefreshHash,
   rotateSessionRefreshToken,
   revokeSessionByRefreshHash,
 };

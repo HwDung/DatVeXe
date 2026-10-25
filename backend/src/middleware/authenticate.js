@@ -1,6 +1,9 @@
 const jwt = require("jsonwebtoken");
 const { env } = require("../config/env");
-const { findActiveSessionById } = require("../models/auth/session.model");
+const {
+  findActiveSessionById,
+  findLockedSessionById,
+} = require("../models/auth/session.model");
 const { HttpError } = require("../utils/http-error");
 
 async function authenticate(request, _response, next) {
@@ -34,7 +37,16 @@ async function authenticate(request, _response, next) {
   const session = await findActiveSessionById(payload.sid, payload.sub, new Date());
 
   if (!session) {
+    const lockedSession = await findLockedSessionById(payload.sid, payload.sub);
+    if (lockedSession) {
+      next(new HttpError(403, "ACCOUNT_LOCKED", "This account is locked"));
+      return;
+    }
     next(new HttpError(401, "SESSION_REVOKED", "Session is invalid or expired"));
+    return;
+  }
+  if (session.user.isLocked) {
+    next(new HttpError(403, "ACCOUNT_LOCKED", "This account is locked"));
     return;
   }
 
