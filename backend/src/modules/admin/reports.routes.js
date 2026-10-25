@@ -1,5 +1,5 @@
 const { Router } = require("express");
-const XLSX = require("xlsx");
+const ExcelJS = require("exceljs");
 const { prisma } = require("../../lib/prisma");
 
 const reportsRouter = Router();
@@ -231,30 +231,28 @@ reportsRouter.get("/export-excel", async (req, res) => {
       "Thời gian đặt": "",
     });
 
-    const workbook = XLSX.utils.book_new();
-    const worksheet = XLSX.utils.json_to_sheet(rows);
-
-    worksheet["!cols"] = [
-      { wch: 6 },
-      { wch: 20 },
-      { wch: 22 },
-      { wch: 15 },
-      { wch: 24 },
-      { wch: 24 },
-      { wch: 18 },
-      { wch: 22 },
-      { wch: 10 },
-      { wch: 14 },
-      { wch: 12 },
-      { wch: 18 },
-      { wch: 16 },
-      { wch: 18 },
-      { wch: 18 },
-      { wch: 22 },
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("BaoCaoDatVe");
+    worksheet.columns = [
+      { header: "STT", key: "STT", width: 6 },
+      { header: "Mã vé", key: "Mã vé", width: 20 },
+      { header: "Họ tên hành khách", key: "Họ tên hành khách", width: 22 },
+      { header: "Số điện thoại", key: "Số điện thoại", width: 15 },
+      { header: "Email", key: "Email", width: 24 },
+      { header: "Tuyến đường", key: "Tuyến đường", width: 24 },
+      { header: "Nhà xe", key: "Nhà xe", width: 18 },
+      { header: "Loại xe", key: "Loại xe", width: 22 },
+      { header: "Mã ghế", key: "Mã ghế", width: 10 },
+      { header: "Ngày đi", key: "Ngày đi", width: 14 },
+      { header: "Giờ chạy", key: "Giờ chạy", width: 12 },
+      { header: "Tổng tiền (VNĐ)", key: "Tổng tiền (VNĐ)", width: 18 },
+      { header: "Trạng thái vé", key: "Trạng thái vé", width: 16 },
+      { header: "Thanh toán", key: "Thanh toán", width: 18 },
+      { header: "Hình thức", key: "Hình thức", width: 18 },
+      { header: "Thời gian đặt", key: "Thời gian đặt", width: 22 },
     ];
-
-    XLSX.utils.book_append_sheet(workbook, worksheet, "BaoCaoDatVe");
-    const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+    worksheet.addRows(rows);
+    const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
 
     const nowStr = new Date().toISOString().slice(0, 10);
     const filename = `Bao_cao_dat_ve_${nowStr}.xlsx`;

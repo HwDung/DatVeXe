@@ -11,6 +11,8 @@ const { reportsRouter } = require("./reports.routes");
 const adminController = require("./admin.controller");
 const adminBookingsController = require("./bookings.controller");
 const dashboardController = require("./dashboard.controller");
+const tripImportController = require("./trip-import.controller");
+const { receiveExcelFile } = require("./trip-import.middleware");
 
 const adminRouter = Router();
 
@@ -30,6 +32,8 @@ adminRouter.get("/bookings", adminBookingsController.listBookings);
 adminRouter.get("/bookings/:id", adminBookingsController.getBooking);
 adminRouter.patch("/bookings/:id/status", adminBookingsController.updateBookingStatus);
 adminRouter.put("/bookings/:id", adminBookingsController.updateBookingStatus);
+adminRouter.post("/trips/import/preview", receiveExcelFile, tripImportController.previewTrips);
+adminRouter.post("/trips/import", receiveExcelFile, tripImportController.importTrips);
 adminRouter.use("/trips", tripScheduleRouter);
 adminRouter.use("/trips", tripManagementRouter);
 adminRouter.use("/pickup-dropoff-points", pickupDropoffPointsRouter);
