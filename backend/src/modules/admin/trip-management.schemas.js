@@ -14,7 +14,14 @@ const tripFields = {
   companyId: z.string().trim().min(1).max(30),
   departureTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
   arrivalTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
-  duration: z.string().trim().min(1).max(10),
+  duration: z.string()
+    .trim()
+    .max(10)
+    .regex(/^\d{1,3}h(?:\s*\d{1,2}p?)?$/i, "Duration must use a format such as 5h or 5h 30p")
+    .refine((value) => {
+      const [, hours, minutes = "0"] = value.match(/^(\d{1,3})h(?:\s*(\d{1,2})p?)?$/i) ?? [];
+      return Number(hours) > 0 && Number(minutes) < 60;
+    }, "Duration must be greater than zero and minutes must be less than 60"),
   price: z.number().int().positive().max(2147483647),
   availableDate: dateOnlySchema.nullable().optional(),
   isActive: z.boolean().optional(),
