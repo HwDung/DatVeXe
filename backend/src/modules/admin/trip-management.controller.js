@@ -9,6 +9,23 @@ async function listTrips(_request, response, next) {
   }
 }
 
+async function exportTrips(_request, response, next) {
+  try {
+    const workbook = await tripManagementService.exportTrips();
+    const timestamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+    response
+      .status(200)
+      .set({
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition": `attachment; filename="trips-${timestamp}.xlsx"`,
+        "Content-Length": workbook.length,
+      })
+      .send(workbook);
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function getTrip(request, response, next) {
   try {
     const id = tripIdSchema.parse(request.params.id);
@@ -46,4 +63,4 @@ async function deleteTrip(request, response, next) {
   }
 }
 
-module.exports = { listTrips, getTrip, createTrip, updateTrip, deleteTrip };
+module.exports = { listTrips, exportTrips, getTrip, createTrip, updateTrip, deleteTrip };

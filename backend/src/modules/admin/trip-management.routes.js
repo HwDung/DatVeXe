@@ -4,6 +4,7 @@ const controller = require("./trip-management.controller");
 const tripManagementRouter = Router();
 
 tripManagementRouter.get("/", controller.listTrips);
+tripManagementRouter.get("/export-excel", controller.exportTrips);
 tripManagementRouter.get("/:id", controller.getTrip);
 tripManagementRouter.post("/", controller.createTrip);
 tripManagementRouter.put("/:id", controller.updateTrip);

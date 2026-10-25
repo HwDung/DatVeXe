@@ -19,6 +19,8 @@ const AdminTrips = () => {
   const [importError, setImportError] = useState('');
   const [isPreviewingImport, setIsPreviewingImport] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [isExportingTrips, setIsExportingTrips] = useState(false);
+  const [exportError, setExportError] = useState('');
 
   const fetchTrips = async () => {
     try {
@@ -108,6 +110,36 @@ const AdminTrips = () => {
     }
   };
 
+  const handleExportTrips = async () => {
+    setIsExportingTrips(true);
+    setExportError('');
+    try {
+      const response = await adminService.exportTripsExcel();
+      const blobUrl = URL.createObjectURL(response.data);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `chuyen-xe-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    } catch (error) {
+      const responseData = error.response?.data;
+      if (responseData instanceof Blob) {
+        try {
+          const payload = JSON.parse(await responseData.text());
+          setExportError(payload.error?.message || payload.message || 'Không thể xuất danh sách chuyến xe.');
+        } catch {
+          setExportError('Không thể xuất danh sách chuyến xe.');
+        }
+      } else {
+        setExportError(responseData?.error?.message || responseData?.message || 'Không thể xuất danh sách chuyến xe.');
+      }
+    } finally {
+      setIsExportingTrips(false);
+    }
+  };
+
   const handleOpenModal = (trip = null) => {
     setCurrentTrip(trip || { route: '', company: '', departureTime: '', arrivalTime: '', price: 0, status: 'Đang mở bán' });
     setIsModalOpen(true);
@@ -149,10 +181,16 @@ const AdminTrips = () => {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
         <h2 style={{ margin: 0, color: '#111827' }}>Quản lý Chuyến xe</h2>
-        <button type="button" className="btn btn-primary" onClick={() => handleOpenModal()}>
-          <i className="bi bi-plus-lg"></i> Thêm chuyến
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button type="button" className="btn btn-secondary" onClick={handleExportTrips} disabled={isExportingTrips}>
+            <i className="bi bi-file-earmark-spreadsheet"></i> {isExportingTrips ? 'Đang xuất...' : 'Xuất Excel'}
+          </button>
+          <button type="button" className="btn btn-primary" onClick={() => handleOpenModal()}>
+            <i className="bi bi-plus-lg"></i> Thêm chuyến
+          </button>
+        </div>
       </div>
+      {exportError && <div role="alert" className="alert alert-danger" style={{ marginBottom: '16px' }}>{exportError}</div>}
 
       <section className="admin-table-container" aria-labelledby="trip-import-heading" style={{ padding: '20px', marginBottom: '24px' }}>
         <h3 id="trip-import-heading" style={{ marginTop: 0 }}>Import chuyến xe từ Excel</h3>

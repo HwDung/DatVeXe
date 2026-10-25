@@ -1,5 +1,6 @@
 const { prisma } = require("../../lib/prisma");
 const { HttpError } = require("../../utils/http-error");
+const ExcelJS = require("exceljs");
 
 const tripInclude = { route: true, bus: true, company: true };
 
@@ -31,6 +32,56 @@ function listTrips() {
   });
 }
 
+async function exportTrips() {
+  const trips = await prisma.trip.findMany({
+    include: tripInclude,
+    orderBy: { createdAt: "desc" },
+  });
+  if (trips.length === 0) {
+    throw new HttpError(404, "NO_TRIPS_TO_EXPORT", "No trips are available to export");
+  }
+
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "DatVeXe Admin";
+  const worksheet = workbook.addWorksheet("Chuyến xe");
+  worksheet.columns = [
+    { header: "Mã chuyến", key: "tripId", width: 24 },
+    { header: "Tuyến đường", key: "route", width: 32 },
+    { header: "Xe", key: "bus", width: 28 },
+    { header: "Nhà xe", key: "company", width: 26 },
+    { header: "Giờ khởi hành", key: "departureTime", width: 18 },
+    { header: "Giờ đến", key: "arrivalTime", width: 18 },
+    { header: "Thời lượng", key: "duration", width: 16 },
+    { header: "Giá vé (VNĐ)", key: "price", width: 20, style: { numFmt: '#,##0 "₫"' } },
+    { header: "Ngày chạy", key: "availableDate", width: 16, style: { numFmt: "dd/mm/yyyy" } },
+    { header: "Trạng thái", key: "status", width: 16 },
+  ];
+  worksheet.addRows(trips.map((trip) => ({
+    tripId: trip.id,
+    route: trip.route ? `${trip.route.origin} - ${trip.route.destination}` : "",
+    bus: trip.bus?.name ?? "",
+    company: trip.company?.name ?? "",
+    departureTime: trip.departureTime,
+    arrivalTime: trip.arrivalTime,
+    duration: trip.duration,
+    price: trip.price,
+    availableDate: trip.availableDate,
+    status: trip.isActive ? "Đang hoạt động" : "Tạm dừng",
+  })));
+  worksheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+  worksheet.getRow(1).fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: "FF1D4ED8" },
+  };
+  worksheet.views = [{ state: "frozen", ySplit: 1 }];
+  worksheet.autoFilter = {
+    from: { row: 1, column: 1 },
+    to: { row: 1, column: worksheet.columnCount },
+  };
+  return Buffer.from(await workbook.xlsx.writeBuffer());
+}
+
 async function getTrip(id) {
   const trip = await prisma.trip.findUnique({ where: { id }, include: tripInclude });
   if (!trip) {
@@ -59,4 +110,4 @@ async function deleteTrip(id) {
   return { success: true };
 }
 
-module.exports = { listTrips, getTrip, createTrip, updateTrip, deleteTrip };
+module.exports = { listTrips, exportTrips, getTrip, createTrip, updateTrip, deleteTrip };
