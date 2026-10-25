@@ -9,6 +9,7 @@ const { routeManagementRouter } = require("./route-management.routes");
 const { busesRouter } = require("./buses.routes");
 const { reportsRouter } = require("./reports.routes");
 const adminController = require("./admin.controller");
+const adminBookingsController = require("./bookings.controller");
 
 const adminRouter = Router();
 
@@ -24,6 +25,10 @@ adminRouter.patch("/users/:userId", adminController.updateUser);
 adminRouter.delete("/users/:userId", adminController.deleteUser);
 adminRouter.put("/users/:userId/roles", adminController.replaceUserRoles);
 adminRouter.get("/roles", adminController.listRoles);
+adminRouter.get("/bookings", adminBookingsController.listBookings);
+adminRouter.get("/bookings/:id", adminBookingsController.getBooking);
+adminRouter.patch("/bookings/:id/status", adminBookingsController.updateBookingStatus);
+adminRouter.put("/bookings/:id", adminBookingsController.updateBookingStatus);
 adminRouter.use("/trips", tripScheduleRouter);
 adminRouter.use("/trips", tripManagementRouter);
 adminRouter.use("/pickup-dropoff-points", pickupDropoffPointsRouter);
@@ -138,21 +143,6 @@ async function getDashboardStats(_req, res) {
 
 adminRouter.get("/dashboard", getDashboardStats);
 
-adminRouter.patch("/bookings/:id/status", async (req, res) => {
-  try {
-    const id = req.params.id;
-    const { status } = req.body;
-    const booking = await prisma.booking.update({
-      where: { id },
-      data: { status },
-    });
-    res.json(booking);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
 adminRouter.get("/trips", async (_req, res) => {
   try {
     const trips = await prisma.trip.findMany({
@@ -252,140 +242,6 @@ const crudHandler = (model, includes) => ({
     }
   },
 });
-
-// Explicit booking management for Admin
-adminRouter.get("/bookings", async (req, res) => {
-  try {
-    const { search, status, date } = req.query;
-    const where = {};
-
-    if (status && status.trim()) {
-      where.status = status.trim();
-    }
-
-    if (date && date.trim()) {
-      const tripDate = new Date(date);
-      if (!isNaN(tripDate.getTime())) {
-        where.tripDate = tripDate;
-      }
-    }
-
-    if (search && search.trim()) {
-      const term = search.trim();
-      where.OR = [
-        { bookingCode: { contains: term } },
-        { passengerName: { contains: term } },
-        { passengerPhone: { contains: term } },
-        { passengerEmail: { contains: term } },
-      ];
-    }
-
-    const bookings = await prisma.booking.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      include: {
-        trip: {
-          include: {
-            route: true,
-            company: true,
-            bus: true,
-          },
-        },
-      },
-    });
-
-    res.json(bookings);
-  } catch (error) {
-    console.error("Admin getBookings error:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
-adminRouter.get("/bookings/:id", async (req, res) => {
-  try {
-    const booking = await prisma.booking.findUnique({
-      where: { id: req.params.id },
-      include: {
-        trip: {
-          include: {
-            route: true,
-            company: true,
-            bus: true,
-          },
-        },
-        user: true,
-        seatStatuses: true,
-      },
-    });
-    if (!booking) {
-      return res.status(404).json({ message: "Booking not found" });
-    }
-    res.json(booking);
-  } catch (error) {
-    console.error("Admin getBooking error:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
-
-const handleUpdateBookingStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status, paymentStatus } = req.body;
-
-    const booking = await prisma.booking.findUnique({
-      where: { id },
-      include: { seatStatuses: true },
-    });
-    if (!booking) {
-      return res.status(404).json({ message: "Booking not found" });
-    }
-
-    const updateData = {};
-    if (status) updateData.status = status;
-    if (paymentStatus) updateData.paymentStatus = paymentStatus;
-
-    // Transaction to update booking and handle seat release if cancelled
-    const result = await prisma.$transaction(async (tx) => {
-      const updated = await tx.booking.update({
-        where: { id },
-        data: updateData,
-        include: {
-          trip: {
-            include: {
-              route: true,
-              company: true,
-              bus: true,
-            },
-          },
-        },
-      });
-
-      if (status === "cancelled") {
-        // Release seats
-        await tx.seatStatus.updateMany({
-          where: { bookingId: id },
-          data: { status: "available", bookingId: null },
-        });
-      } else if (status === "confirmed") {
-        // Ensure seats are booked
-        await tx.seatStatus.updateMany({
-          where: { bookingId: id },
-          data: { status: "booked" },
-        });
-      }
-
-      return updated;
-    });
-
-    res.json(result);
-  } catch (error) {
-    console.error("Admin updateBookingStatus error:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-};
-
-adminRouter.patch("/bookings/:id/status", handleUpdateBookingStatus);
-adminRouter.put("/bookings/:id", handleUpdateBookingStatus);
 
 adminRouter.delete("/bookings/:id", async (req, res) => {
   try {

@@ -62,7 +62,7 @@ const AdminBookings = () => {
       setTimeout(() => setActionSuccessMsg(''), 4000);
     } catch (err) {
       console.error('Failed to update status:', err);
-      alert(err.response?.data?.message || 'Có lỗi khi cập nhật trạng thái đơn vé');
+      alert(err.response?.data?.error?.message || err.response?.data?.message || 'Có lỗi khi cập nhật trạng thái đơn vé');
     } finally {
       setUpdatingId(null);
     }
