@@ -8,10 +8,19 @@ const { pickupDropoffPointsRouter } = require("./pickup-dropoff-points.routes");
 const { routeManagementRouter } = require("./route-management.routes");
 const { busesRouter } = require("./buses.routes");
 const { reportsRouter } = require("./reports.routes");
+const adminController = require("./admin.controller");
 
 const adminRouter = Router();
 
 adminRouter.use(authenticate, requireRole("admin"));
+adminRouter.get("/users", adminController.listUsers);
+adminRouter.post("/users", adminController.createUser);
+adminRouter.get("/users/:userId", adminController.getUser);
+adminRouter.put("/users/:userId", adminController.updateUser);
+adminRouter.patch("/users/:userId", adminController.updateUser);
+adminRouter.delete("/users/:userId", adminController.deleteUser);
+adminRouter.put("/users/:userId/roles", adminController.replaceUserRoles);
+adminRouter.get("/roles", adminController.listRoles);
 adminRouter.use("/trips", tripScheduleRouter);
 adminRouter.use("/trips", tripManagementRouter);
 adminRouter.use("/pickup-dropoff-points", pickupDropoffPointsRouter);
@@ -125,19 +134,6 @@ async function getDashboardStats(_req, res) {
 }
 
 adminRouter.get("/dashboard", getDashboardStats);
-
-adminRouter.get("/users", async (_req, res) => {
-  try {
-    const users = await prisma.user.findMany({
-      include: { roles: { include: { role: true } } },
-      orderBy: { createdAt: "desc" },
-    });
-    res.json(users);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
 
 adminRouter.patch("/bookings/:id/status", async (req, res) => {
   try {

@@ -1,23 +1,90 @@
 const { prisma } = require("../../lib/prisma");
 
+const userSelect = {
+  id: true,
+  email: true,
+  fullName: true,
+  createdAt: true,
+  updatedAt: true,
+  roles: { select: { role: { select: { name: true } } } },
+};
+
 function listUsers() {
   return prisma.user.findMany({
-    take: 100,
     orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      email: true,
-      fullName: true,
-      createdAt: true,
-      roles: { select: { role: { select: { name: true } } } },
-    },
+    select: userSelect,
   });
+}
+
+function findUserById(userId) {
+  return prisma.user.findUnique({ where: { id: userId }, select: userSelect });
 }
 
 function findRolesByNames(names) {
   return prisma.role.findMany({
     where: { name: { in: names } },
     select: { id: true, name: true },
+  });
+}
+
+function createUser(input, roleIds) {
+  return prisma.user.create({
+    data: {
+      email: input.email,
+      fullName: input.fullName ?? null,
+      passwordHash: input.passwordHash,
+      roles: {
+        create: roleIds.map((roleId) => ({ role: { connect: { id: roleId } } })),
+      },
+    },
+    select: userSelect,
+  });
+}
+
+function updateUser(userId, input, roleIds) {
+  return prisma.$transaction(async (transaction) => {
+    const currentUser = await transaction.user.findUnique({
+      where: { id: userId },
+      select: { id: true },
+    });
+    if (!currentUser) return null;
+
+    const { passwordHash, roles: _roles, ...userData } = input;
+    if (passwordHash !== undefined) userData.passwordHash = passwordHash;
+
+    if (Object.keys(userData).length > 0) {
+      await transaction.user.update({ where: { id: userId }, data: userData });
+    }
+
+    if (roleIds !== undefined) {
+      await transaction.userRole.deleteMany({ where: { userId } });
+      await transaction.userRole.createMany({
+        data: roleIds.map((roleId) => ({ userId, roleId })),
+      });
+    }
+
+    if (passwordHash !== undefined) {
+      await transaction.session.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    }
+
+    return transaction.user.findUnique({ where: { id: userId }, select: userSelect });
+  });
+}
+
+function deleteUser(userId) {
+  return prisma.$transaction(async (transaction) => {
+    const user = await transaction.user.findUnique({
+      where: { id: userId },
+      select: { id: true, bookings: { select: { id: true }, take: 1 } },
+    });
+    if (!user) return { deleted: false, hasBookings: false };
+    if (user.bookings.length > 0) return { deleted: false, hasBookings: true };
+
+    await transaction.user.delete({ where: { id: userId } });
+    return { deleted: true, hasBookings: false };
   });
 }
 
@@ -44,4 +111,13 @@ function listRoles() {
   });
 }
 
-module.exports = { listUsers, findRolesByNames, replaceUserRoles, listRoles };
+module.exports = {
+  listUsers,
+  findUserById,
+  findRolesByNames,
+  createUser,
+  updateUser,
+  deleteUser,
+  replaceUserRoles,
+  listRoles,
+};
