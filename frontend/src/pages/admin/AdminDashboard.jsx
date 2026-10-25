@@ -6,6 +6,7 @@ const DEFAULT_STATS = {
   revenue: 0,
   users: 0,
   trips: 0,
+  companies: 0,
 };
 
 const AdminDashboard = () => {
@@ -13,9 +14,11 @@ const AdminDashboard = () => {
   const [recentBookings, setRecentBookings] = useState([]);
   const [monthlyStats, setMonthlyStats] = useState([]);
   const [dailyStats, setDailyStats] = useState([]);
+  const [weeklyStats, setWeeklyStats] = useState([]);
   const [statusCounts, setStatusCounts] = useState({ confirmed: 0, pending: 0, completed: 0, cancelled: 0 });
   const [topRoutes, setTopRoutes] = useState([]);
-  const [chartView, setChartView] = useState('monthly'); // 'monthly' or 'daily'
+  const [companyStats, setCompanyStats] = useState([]);
+  const [chartView, setChartView] = useState('monthly');
   const [hoveredBar, setHoveredBar] = useState(null);
 
   useEffect(() => {
@@ -32,12 +35,15 @@ const AdminDashboard = () => {
           revenue: data.revenue ?? 0,
           users: data.totalUsers ?? data.users ?? 0,
           trips: data.totalTrips ?? data.trips ?? 0,
+          companies: data.totalCompanies ?? 0,
         });
 
         if (Array.isArray(data.monthlyStats)) setMonthlyStats(data.monthlyStats);
         if (Array.isArray(data.dailyStats)) setDailyStats(data.dailyStats);
+        if (Array.isArray(data.weeklyStats)) setWeeklyStats(data.weeklyStats);
         if (data.statusCounts) setStatusCounts(data.statusCounts);
         if (Array.isArray(data.topRoutes)) setTopRoutes(data.topRoutes);
+        if (Array.isArray(data.companyStats)) setCompanyStats(data.companyStats);
 
         if (Array.isArray(data.recentBookings)) {
           setRecentBookings(
@@ -99,7 +105,11 @@ const AdminDashboard = () => {
   };
 
   // Chart data calculations
-  const chartData = chartView === 'monthly' ? monthlyStats : dailyStats;
+  const chartData = chartView === 'monthly'
+    ? monthlyStats
+    : chartView === 'weekly'
+      ? weeklyStats
+      : dailyStats;
   const maxRevenue = Math.max(...chartData.map((d) => d.revenue || 0), 1000000);
   const totalChartRevenue = chartData.reduce((acc, cur) => acc + (cur.revenue || 0), 0);
   const totalChartBookings = chartData.reduce((acc, cur) => acc + (cur.bookings || 0), 0);
@@ -148,6 +158,14 @@ const AdminDashboard = () => {
             <p>{(stats?.trips ?? 0).toLocaleString()}</p>
           </div>
         </div>
+
+        <div className="stat-card">
+          <div className="stat-icon blue"><i className="bi bi-buildings"></i></div>
+          <div className="stat-info">
+            <h3>Nhà xe</h3>
+            <p>{(stats?.companies ?? 0).toLocaleString()}</p>
+          </div>
+        </div>
       </div>
 
       {/* Main Charts Grid */}
@@ -168,6 +186,13 @@ const AdminDashboard = () => {
                 onClick={() => setChartView('monthly')}
               >
                 6 Tháng gần nhất
+              </button>
+              <button
+                type="button"
+                className={`chart-tab-btn ${chartView === 'weekly' ? 'active' : ''}`}
+                onClick={() => setChartView('weekly')}
+              >
+                8 Tuần gần nhất
               </button>
               <button
                 type="button"
@@ -204,7 +229,7 @@ const AdminDashboard = () => {
                 const barHeight = maxRevenue > 0 ? ((item.revenue || 0) / maxRevenue) * 160 : 0;
                 const y = 200 - barHeight;
                 const isHovered = hoveredBar === index;
-                const label = item.month || item.date || `Kỳ ${index + 1}`;
+                const label = item.month || item.week || item.date || `Kỳ ${index + 1}`;
 
                 return (
                   <g
@@ -283,12 +308,13 @@ const AdminDashboard = () => {
                   pointerEvents: 'none',
                 }}
               >
-                <div style={{ fontWeight: 600 }}>{chartData[hoveredBar].month || chartData[hoveredBar].date}</div>
+                <div style={{ fontWeight: 600 }}>{chartData[hoveredBar].month || chartData[hoveredBar].week || chartData[hoveredBar].date}</div>
                 <div>Doanh thu: <strong style={{ color: '#F87171' }}>{formatCurrency(chartData[hoveredBar].revenue)}</strong></div>
                 <div>Số lượng: <strong>{chartData[hoveredBar].bookings} vé</strong></div>
               </div>
             )}
           </div>
+
         </div>
 
         {/* Status Breakdown & Top Routes */}
@@ -342,6 +368,25 @@ const AdminDashboard = () => {
                 ))
               ) : (
                 <p style={{ color: '#9CA3AF', fontSize: '13px', textAlign: 'center', margin: '16px 0' }}>Chưa có dữ liệu tuyến</p>
+              )}
+            </div>
+          </div>
+
+          <div className="chart-card" style={{ marginBottom: 0 }}>
+            <div className="chart-card-header" style={{ marginBottom: '8px' }}>
+              <h2><i className="bi bi-buildings-fill" style={{ color: '#F59E0B' }}></i> Nhà xe theo số chuyến</h2>
+            </div>
+            <div>
+              {companyStats.length > 0 ? companyStats.map((company, index) => (
+                <div className="top-route-item" key={company.companyId}>
+                  <div className="top-route-name">
+                    <span style={{ color: '#9CA3AF', fontSize: '12px', width: '16px' }}>#{index + 1}</span>
+                    <span>{company.name}</span>
+                  </div>
+                  <div className="top-route-count">{company.trips} chuyến</div>
+                </div>
+              )) : (
+                <p style={{ color: '#9CA3AF', fontSize: '13px', textAlign: 'center', margin: '16px 0' }}>Chưa có dữ liệu nhà xe</p>
               )}
             </div>
           </div>
