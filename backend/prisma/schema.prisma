@@ -12,6 +12,7 @@ model User {
   email        String      @unique @db.NVarChar(254)
   fullName     String?     @db.NVarChar(120)
   passwordHash String      @db.VarChar(60)
+  isLocked     Boolean     @default(false)
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   roles        UserRole[]

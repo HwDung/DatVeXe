@@ -66,6 +66,9 @@ async function login(input) {
   if (!user || !(await bcrypt.compare(input.password, user.passwordHash))) {
     throw new HttpError(401, "INVALID_CREDENTIALS", "Email or password is incorrect");
   }
+  if (user.isLocked) {
+    throw new HttpError(403, "ACCOUNT_LOCKED", "This account is locked");
+  }
 
   const tokens = await createSession(user.id);
   return { ...tokens, user: serializeUser(user) };
@@ -79,7 +82,14 @@ async function refreshSession(refreshToken) {
   const currentHash = hashToken(refreshToken);
   const session = await sessionModel.findActiveSessionByRefreshHash(currentHash, new Date());
   if (!session) {
+    const lockedSession = await sessionModel.findLockedSessionByRefreshHash(currentHash);
+    if (lockedSession) {
+      throw new HttpError(403, "ACCOUNT_LOCKED", "This account is locked");
+    }
     throw new HttpError(401, "INVALID_SESSION", "Refresh session is missing or expired");
+  }
+  if (session.user.isLocked) {
+    throw new HttpError(403, "ACCOUNT_LOCKED", "This account is locked");
   }
 
   const nextRefreshToken = createRefreshToken();

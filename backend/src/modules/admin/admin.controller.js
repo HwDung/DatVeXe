@@ -19,6 +19,33 @@ async function getUser(request, response, next) {
   }
 }
 
+async function getUserStatus(request, response, next) {
+  try {
+    const userId = userIdSchema.parse(request.params.userId);
+    response.json({ status: await adminService.getUserStatus(userId) });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function lockUser(request, response, next) {
+  try {
+    const userId = userIdSchema.parse(request.params.userId);
+    response.json({ status: await adminService.changeUserLockStatus(userId, true) });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function unlockUser(request, response, next) {
+  try {
+    const userId = userIdSchema.parse(request.params.userId);
+    response.json({ status: await adminService.changeUserLockStatus(userId, false) });
+  } catch (error) {
+    next(error);
+  }
+}
+
 async function createUser(request, response, next) {
   try {
     const input = createUserSchema.parse(request.body);
@@ -72,6 +99,9 @@ async function listRoles(_request, response, next) {
 module.exports = {
   listUsers,
   getUser,
+  getUserStatus,
+  lockUser,
+  unlockUser,
   createUser,
   updateUser,
   deleteUser,
