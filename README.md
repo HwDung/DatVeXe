@@ -106,3 +106,10 @@ Trạng thái không hợp lệ hoặc không thể chuyển sẽ trả HTTP 409
 ### Thống kê Dashboard Admin
 
 `GET /api/admin/dashboard` trả tổng số người dùng, booking, chuyến và nhà xe; số chuyến đang hoạt động; booking theo trạng thái; booking theo trạng thái thanh toán; doanh thu; 7 ngày, 8 tuần và 6 tháng thống kê booking/doanh thu; 5 tuyến có doanh thu cao nhất; 5 nhà xe có nhiều chuyến nhất và 10 booking mới nhất. Booking và doanh thu theo thời gian được nhóm theo ngày tạo booking (`createdAt`, UTC). Doanh thu chỉ tính booking có `paymentStatus: "paid"`; booking đã hoàn tiền không còn được tính. Schema hiện không có bản ghi giao dịch hoặc thời điểm thanh toán riêng, nên biểu đồ dùng ngày tạo booking làm mốc thời gian.
+
+### Import chuyến xe từ Excel
+
+- `POST /api/admin/trips/import/preview` đọc và kiểm tra file multipart Excel, field tên `file`; `POST /api/admin/trips/import` import các dòng hợp lệ. Cả hai endpoint nhận query `sheetName`; nếu bỏ trống sẽ dùng sheet đầu tiên.
+- Chấp nhận `.xlsx`, giới hạn 5 MB, 20 MB sau giải nén và 300 dòng dữ liệu. Header bắt buộc: `routeId`, `busId`, `companyId`, `departureTime`, `arrivalTime`, `duration`, `price`. Header tùy chọn: `availableDate`, `isActive`. Ví dụ: `routeId=route_1`, `busId=bus_1`, `companyId=company_1`, `departureTime=08:30`, `arrivalTime=13:00`, `duration=4h30`, `price=250000`, `availableDate=2026-10-25`, `isActive=true`.
+- ID tuyến/xe/nhà xe phải tồn tại và xe phải thuộc đúng nhà xe. Giá phải là số nguyên dương; thời gian dùng `HH:mm`; ngày có dạng `YYYY-MM-DD` hoặc ô ngày Excel; `isActive` chấp nhận boolean hoặc `1`/`0`. Bỏ trống `availableDate` nghĩa là chuyến định kỳ.
+- Preview trả `totalRows`, `validRows`, `invalidRows` và tối đa 100 dòng xem trước kèm lỗi từng dòng. Import kiểm tra lại file, bỏ qua dòng sai/trùng và trả `importedRows`, `failedRows`, `validationFailures`, `importFailures`. Trùng lịch được xác định theo tuyến, xe, nhà xe, giờ khởi hành và ngày chạy; dòng lỗi không được ghi vào database.

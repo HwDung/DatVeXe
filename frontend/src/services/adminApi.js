@@ -9,6 +9,16 @@ export const adminService = {
   createTrip: (data) => api.post('/admin/trips', data),
   updateTrip: (id, data) => api.put(`/admin/trips/${id}`, data),
   deleteTrip: (id) => api.delete(`/admin/trips/${id}`),
+  previewTripImport: (file, sheetName) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/admin/trips/import/preview', formData, { params: { sheetName } });
+  },
+  importTrips: (file, sheetName) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/admin/trips/import', formData, { params: { sheetName } });
+  },
   
   // Routes
   getRoutes: (params) => api.get('/admin/routes', { params }),
