@@ -18,6 +18,7 @@ model User {
   roles        UserRole[]
   sessions     Session[]
   bookings     Booking[]
+  anomalyReviews BookingAnomalyReview[]
 }
 
 model Session {
@@ -181,10 +182,12 @@ model Booking {
   user            User?        @relation(fields: [userId], references: [id], onUpdate: NoAction, onDelete: NoAction)
   seatStatuses    SeatStatus[]
   tickets         Ticket[]
+  anomalyReview  BookingAnomalyReview?
 
   @@index([tripId, tripDate])
   @@index([userId])
   @@index([bookingCode])
+  @@index([createdAt])
 }
 
 model Ticket {
@@ -204,6 +207,20 @@ model Ticket {
 
   @@unique([bookingId, seatCode])
   @@index([bookingId, status])
+}
+
+model BookingAnomalyReview {
+  id           String   @id @default(cuid()) @db.NVarChar(30)
+  bookingId    String   @unique @db.NVarChar(30)
+  status       String   @default("open") @db.NVarChar(20) // open, reviewed, false_positive
+  note         String?  @db.NVarChar(500)
+  reviewedById String?  @db.NVarChar(30)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  booking      Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  reviewedBy   User?    @relation(fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([status, updatedAt])
 }
 
 model Promotion {

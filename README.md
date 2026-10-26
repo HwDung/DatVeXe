@@ -103,6 +103,14 @@ Tài khoản người dùng có trạng thái hoạt động hoặc bị khóa. 
 
 Trạng thái không hợp lệ hoặc không thể chuyển sẽ trả HTTP 409 cùng mã lỗi cụ thể; booking không tồn tại trả HTTP 404.
 
+### Phát hiện vé trùng lặp và bất thường
+
+- Trang `/admin/anomalies` phân tích booking, vé và trạng thái ghế; API `GET /api/admin/anomalies` hỗ trợ tìm kiếm, lọc theo ngày khởi hành/mức rủi ro/trạng thái rà soát và phân trang. Endpoint yêu cầu xác thực và vai trò `admin`.
+- Điểm nghi ngờ cộng theo tín hiệu: ghế trùng giữa booking đang hoạt động (+70), thông tin liên hệ lặp lại cùng chuyến/ngày (+25), 4+ booking trong cửa sổ 10 phút (+35), tên tương tự/trùng nhưng liên hệ khác nhau (+15), ghế/giá/thông tin hành khách/trạng thái vé không nhất quán (+25–35). Điểm hiển thị giới hạn 100; mức thấp 15–39, trung bình 40–69, cao từ 70.
+- Chỉ thông tin tên đã che một phần được trả về từ API; số điện thoại và email chỉ được dùng nội bộ để so khớp, không đưa vào kết quả. Hệ thống quét tối đa 2.000 booking gần nhất mỗi lần; lọc ngày hoặc tìm kiếm để thu hẹp phạm vi khi được cảnh báo giới hạn.
+- `PATCH /api/admin/anomalies/:bookingId/review` nhận `{ "status": "reviewed" }`, `{ "status": "false_positive" }` hoặc `{ "status": "open" }`, kèm `note` tùy chọn tối đa 500 ký tự. Trạng thái rà soát được lưu riêng trong `BookingAnomalyReview`; việc gắn cờ/đánh dấu không tự động hủy, sửa trạng thái booking hay giải phóng ghế.
+- Sau khi cập nhật schema, chạy `npx prisma db push` và `npx prisma generate` trong thư mục `backend` để tạo bảng trạng thái rà soát. Cơ chế này là kiểm tra hậu kiểm, không thay thế unique constraint của `SeatStatus` hoặc transaction đặt ghế SERIALIZABLE.
+
 ### Thống kê Dashboard Admin
 
 `GET /api/admin/dashboard` trả tổng số người dùng, booking, chuyến và nhà xe; số chuyến đang hoạt động; booking theo trạng thái; booking theo trạng thái thanh toán; doanh thu; 7 ngày, 8 tuần và 6 tháng thống kê booking/doanh thu; 5 tuyến có doanh thu cao nhất; 5 nhà xe có nhiều chuyến nhất và 10 booking mới nhất. Booking và doanh thu theo thời gian được nhóm theo ngày tạo booking (`createdAt`, UTC). Doanh thu chỉ tính booking có `paymentStatus: "paid"`; booking đã hoàn tiền không còn được tính. Schema hiện không có bản ghi giao dịch hoặc thời điểm thanh toán riêng, nên biểu đồ dùng ngày tạo booking làm mốc thời gian.

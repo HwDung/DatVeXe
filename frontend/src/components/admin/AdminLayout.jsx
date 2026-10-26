@@ -25,6 +25,7 @@ const AdminLayout = ({ children }) => {
     if (path.includes('routes')) return 'Quản lý Tuyến đường';
     if (path.includes('companies')) return 'Quản lý Nhà xe';
     if (path.includes('bookings')) return 'Quản lý Đặt vé';
+    if (path.includes('anomalies')) return 'Phát hiện vé bất thường';
     if (path.includes('promotions')) return 'Quản lý Khuyến mãi';
     if (path.includes('news')) return 'Quản lý Tin tức';
     if (path.includes('users')) return 'Quản lý Người dùng';
@@ -59,6 +60,9 @@ const AdminLayout = ({ children }) => {
           </NavLink>
           <NavLink to="/admin/bookings" className={({ isActive }) => `admin-menu-item ${isActive ? 'active' : ''}`}>
             <i className="bi bi-ticket-detailed"></i> Đặt vé
+          </NavLink>
+          <NavLink to="/admin/anomalies" className={({ isActive }) => `admin-menu-item ${isActive ? 'active' : ''}`}>
+            <i className="bi bi-shield-exclamation"></i> Vé nghi vấn
           </NavLink>
           <NavLink to="/admin/promotions" className={({ isActive }) => `admin-menu-item ${isActive ? 'active' : ''}`}>
             <i className="bi bi-gift"></i> Khuyến mãi
