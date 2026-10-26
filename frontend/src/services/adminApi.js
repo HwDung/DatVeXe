@@ -37,6 +37,7 @@ export const adminService = {
   getBookings: (params) => api.get('/admin/bookings', { params }),
   updateBookingStatus: (id, status) => api.patch(`/admin/bookings/${id}/status`, { status }),
   getAnomalies: (params) => api.get('/admin/anomalies', { params }),
+  getAnomalyDetail: (bookingId) => api.get(`/admin/anomalies/${bookingId}`),
   updateAnomalyReview: (bookingId, data) => api.patch(`/admin/anomalies/${bookingId}/review`, data),
   
   // Promotions

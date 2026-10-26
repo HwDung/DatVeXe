@@ -34,6 +34,7 @@ adminRouter.get("/bookings/:id", adminBookingsController.getBooking);
 adminRouter.patch("/bookings/:id/status", adminBookingsController.updateBookingStatus);
 adminRouter.put("/bookings/:id", adminBookingsController.updateBookingStatus);
 adminRouter.get("/anomalies", anomaliesController.listAnomalies);
+adminRouter.get("/anomalies/:bookingId", anomaliesController.getAnomalyDetail);
 adminRouter.patch("/anomalies/:bookingId/review", anomaliesController.updateReview);
 adminRouter.post("/trips/import/preview", receiveExcelFile, tripImportController.previewTrips);
 adminRouter.post("/trips/import", receiveExcelFile, tripImportController.importTrips);

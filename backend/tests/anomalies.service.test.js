@@ -5,6 +5,9 @@ const prismaModulePath = require.resolve("../src/lib/prisma");
 let bookings = [];
 let reviews = [];
 let upsertedReview;
+let databaseError = null;
+let lastBookingQuery;
+let lastReviewQuery;
 require.cache[prismaModulePath] = {
   id: prismaModulePath,
   filename: prismaModulePath,
@@ -12,11 +15,19 @@ require.cache[prismaModulePath] = {
   exports: {
     prisma: {
       booking: {
-        findMany: async () => bookings,
-        findUnique: async ({ where }) => ({ id: where.id }),
+        findMany: async (query) => {
+          if (databaseError) throw databaseError;
+          lastBookingQuery = query;
+          return bookings;
+        },
+        findUnique: async ({ where }) => bookings.find(({ id }) => id === where.id) ?? null,
       },
       bookingAnomalyReview: {
-        findMany: async () => reviews,
+        findMany: async (query) => {
+          lastReviewQuery = query;
+          return reviews;
+        },
+        findUnique: async ({ where }) => reviews.find(({ bookingId }) => bookingId === where.bookingId) ?? null,
         upsert: async ({ where, create, update }) => {
           upsertedReview = { bookingId: where.bookingId, ...update, ...create };
           return { ...upsertedReview, updatedAt: new Date("2026-10-26T10:00:00Z") };
@@ -26,7 +37,8 @@ require.cache[prismaModulePath] = {
   },
 };
 
-const { scoreBookings, listAnomalies, updateAnomalyReview } = require("../src/modules/admin/anomalies.service");
+const { scoreBookings, listAnomalies, getAnomalyDetail, updateAnomalyReview } = require("../src/modules/admin/anomalies.service");
+const anomaliesController = require("../src/modules/admin/anomalies.controller");
 
 function createBooking(overrides = {}) {
   const number = overrides.number ?? 1;
@@ -234,4 +246,142 @@ test("lists review status and persists manual review without changing booking st
   const updated = await updateAnomalyReview("booking_1", { status: "false_positive" }, "admin_1");
   assert.equal(updated.status, "false_positive");
   assert.equal(upsertedReview.reviewedById, "admin_1");
+
+  await updateAnomalyReview("booking_1", { status: "in_review" }, "admin_1");
+  assert.equal(upsertedReview.status, "in_review");
+});
+
+test("filters anomaly results by trip, date range, severity, review status, and pagination", async () => {
+  bookings = [createBooking({ number: 1 }), createBooking({ number: 2 })];
+  reviews = [];
+  const result = await listAnomalies({
+    tripId: "trip_1",
+    fromDate: "2026-11-01",
+    toDate: "2026-11-01",
+    severity: "high",
+    reviewStatus: "open",
+    page: 2,
+    pageSize: 1,
+  });
+
+  assert.equal(lastBookingQuery.where.tripId, "trip_1");
+  assert.equal(lastBookingQuery.where.tripDate.gte.toISOString(), "2026-11-01T00:00:00.000Z");
+  assert.equal(lastBookingQuery.take, 2001);
+  assert.deepEqual(lastReviewQuery.where.bookingId.in.sort(), ["booking_1", "booking_2"]);
+  assert.equal(result.pagination.page, 2);
+  assert.equal(result.items.length, 1);
+  assert.equal(result.items[0].bookingId, "booking_2");
+});
+
+test("returns a detailed finding with reasons and masked ticket data", async () => {
+  const duplicate = createBooking({ number: 1 });
+  const peer = createBooking({
+    number: 2,
+    passengerName: "Trần Bình",
+    passengerPhone: "0911111111",
+    passengerEmail: "binh@example.com",
+    tickets: [{
+      id: "ticket_2",
+      ticketCode: "TK-2",
+      seatCode: "A1",
+      passengerName: "Trần Bình",
+      passengerPhone: "0911111111",
+      passengerEmail: "binh@example.com",
+      price: 200000,
+      status: "pending",
+    }],
+    seatStatuses: [{
+      seatCode: "A1",
+      status: "booked",
+      bookingId: "booking_2",
+      ticketId: "ticket_2",
+    }],
+  });
+  duplicate.tickets[0].ticketCode = "TK-1";
+  bookings = [duplicate, peer];
+  reviews = [{ bookingId: "booking_1", status: "in_review", note: "Đang đối chiếu", updatedAt: new Date() }];
+
+  const result = await getAnomalyDetail("booking_1");
+
+  assert.equal(result.bookingCode, "RW1");
+  assert.equal(result.severity, "high");
+  assert.ok(result.reasons.some(({ code }) => code === "duplicate_seat"));
+  assert.equal(result.review.status, "in_review");
+  assert.equal(result.booking.tickets[0].ticketCode, "TK-1");
+  assert.ok(!JSON.stringify(result).includes("0900000001"));
+  assert.equal(result.relatedBookings[0].bookingCode, "RW2");
+});
+
+test("returns not found for missing booking and booking without anomaly", async () => {
+  bookings = [];
+  await assert.rejects(getAnomalyDetail("missing"), (error) => error.status === 404 && error.code === "BOOKING_NOT_FOUND");
+
+  const ordinaryBooking = createBooking({
+    number: 3,
+    status: "cancelled",
+    seatStatuses: [],
+    tickets: [],
+  });
+  bookings = [ordinaryBooking];
+  await assert.rejects(getAnomalyDetail(ordinaryBooking.id), (error) => error.status === 404 && error.code === "ANOMALY_NOT_FOUND");
+});
+
+test("propagates database failures and reports empty lists without hiding errors", async () => {
+  bookings = [];
+  const empty = await listAnomalies({ page: 1, pageSize: 20 });
+  assert.equal(empty.pagination.total, 0);
+  assert.deepEqual(empty.items, []);
+
+  databaseError = new Error("database unavailable");
+  await assert.rejects(listAnomalies({ page: 1, pageSize: 20 }), /database unavailable/);
+  databaseError = null;
+
+  let receivedError;
+  await anomaliesController.listAnomalies(
+    { query: { pageSize: "101" } },
+    { json: () => assert.fail("invalid request must not return data") },
+    (error) => { receivedError = error; },
+  );
+  assert.equal(receivedError.name, "ZodError");
+});
+
+test("converts API validation and database failures through the shared error handler", async () => {
+  const { errorHandler } = require("../src/middleware/error-handler");
+  let responseStatus;
+  let responseBody;
+  const response = {
+    status(status) {
+      responseStatus = status;
+      return this;
+    },
+    json(body) {
+      responseBody = body;
+    },
+  };
+
+  await anomaliesController.updateReview(
+    { params: { bookingId: "booking_1" }, body: { status: "cancelled" }, auth: { userId: "admin_1" } },
+    { json: () => assert.fail("invalid review status must not return success") },
+    (error) => errorHandler(error, {}, response, () => {}),
+  );
+  assert.equal(responseStatus, 400);
+  assert.equal(responseBody.error.code, "VALIDATION_ERROR");
+
+  databaseError = new Error("database unavailable");
+  let databaseFailure;
+  await anomaliesController.listAnomalies(
+    { query: { page: "1", pageSize: "10" } },
+    { json: () => assert.fail("database error must not return success") },
+    (error) => { databaseFailure = error; },
+  );
+  databaseError = null;
+  const originalConsoleError = console.error;
+  console.error = () => {};
+  try {
+    errorHandler(databaseFailure, {}, response, () => {});
+  } finally {
+    console.error = originalConsoleError;
+  }
+  assert.equal(responseStatus, 500);
+  assert.equal(responseBody.error.code, "INTERNAL_ERROR");
 });

@@ -2,10 +2,47 @@ const { prisma } = require("../../lib/prisma");
 const { HttpError } = require("../../utils/http-error");
 
 const SCAN_LIMIT = 2000;
+const DETAIL_SCAN_LIMIT = 2000;
 const MINIMUM_SCORE = 15;
 const activeBookingStatuses = new Set(["pending", "confirmed", "completed"]);
 const bookingStatuses = new Set(["pending", "confirmed", "cancelled", "completed"]);
 const paymentStatuses = new Set(["unpaid", "paid", "refunded"]);
+const bookingAnomalySelect = {
+  id: true,
+  bookingCode: true,
+  tripId: true,
+  userId: true,
+  tripDate: true,
+  passengerName: true,
+  passengerPhone: true,
+  passengerEmail: true,
+  seatCode: true,
+  totalPrice: true,
+  status: true,
+  paymentStatus: true,
+  createdAt: true,
+  tickets: {
+    select: {
+      id: true,
+      ticketCode: true,
+      seatCode: true,
+      passengerName: true,
+      passengerPhone: true,
+      passengerEmail: true,
+      price: true,
+      status: true,
+    },
+  },
+  seatStatuses: {
+    select: { seatCode: true, status: true, bookingId: true, ticketId: true },
+  },
+  trip: {
+    select: {
+      departureTime: true,
+      route: { select: { origin: true, destination: true } },
+    },
+  },
+};
 
 function normalizeText(value) {
   return String(value ?? "")
@@ -315,6 +352,7 @@ function scoreBookings(bookings) {
 
 function buildWhere(filters) {
   const where = {};
+  if (filters.tripId) where.tripId = filters.tripId;
   if (filters.fromDate || filters.toDate) {
     where.tripDate = {};
     if (filters.fromDate) where.tripDate.gte = new Date(`${filters.fromDate}T00:00:00.000Z`);
@@ -339,41 +377,7 @@ async function listAnomalies(filters) {
     where: buildWhere(filters),
     take: SCAN_LIMIT + 1,
     orderBy: [{ createdAt: "desc" }, { id: "asc" }],
-    select: {
-      id: true,
-      bookingCode: true,
-      tripId: true,
-      userId: true,
-      tripDate: true,
-      passengerName: true,
-      passengerPhone: true,
-      passengerEmail: true,
-      seatCode: true,
-      totalPrice: true,
-      status: true,
-      paymentStatus: true,
-      createdAt: true,
-      tickets: {
-        select: {
-          id: true,
-          seatCode: true,
-          passengerName: true,
-          passengerPhone: true,
-          passengerEmail: true,
-          price: true,
-          status: true,
-        },
-      },
-      seatStatuses: {
-        select: { seatCode: true, status: true, bookingId: true, ticketId: true },
-      },
-      trip: {
-        select: {
-          departureTime: true,
-          route: { select: { origin: true, destination: true } },
-        },
-      },
-    },
+    select: bookingAnomalySelect,
   });
 
   const scanLimitReached = bookings.length > SCAN_LIMIT;
@@ -414,6 +418,72 @@ async function listAnomalies(filters) {
   };
 }
 
+async function getAnomalyDetail(bookingId) {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    select: bookingAnomalySelect,
+  });
+  if (!booking) throw new HttpError(404, "BOOKING_NOT_FOUND", "Booking not found");
+
+  const createdAt = new Date(booking.createdAt);
+  const burstWindow = {
+    gte: new Date(createdAt.getTime() - 10 * 60 * 1000),
+    lte: new Date(createdAt.getTime() + 10 * 60 * 1000),
+  };
+  const identityConditions = [
+    booking.passengerPhone ? { passengerPhone: booking.passengerPhone } : null,
+    booking.passengerEmail ? { passengerEmail: booking.passengerEmail } : null,
+    booking.userId ? { userId: booking.userId } : null,
+  ].filter(Boolean);
+  const candidateWhere = {
+    OR: [
+      { tripId: booking.tripId, tripDate: booking.tripDate },
+      ...(identityConditions.length
+        ? [{ createdAt: burstWindow, OR: identityConditions }]
+        : []),
+    ],
+  };
+  const candidates = await prisma.booking.findMany({
+    where: candidateWhere,
+    take: DETAIL_SCAN_LIMIT + 1,
+    orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+    select: bookingAnomalySelect,
+  });
+  const candidateBookings = candidates.some(({ id }) => id === booking.id)
+    ? candidates.slice(0, DETAIL_SCAN_LIMIT)
+    : [booking, ...candidates.slice(0, DETAIL_SCAN_LIMIT - 1)];
+  const anomaly = scoreBookings(candidateBookings).find((item) => item.bookingId === bookingId);
+  if (!anomaly) {
+    throw new HttpError(404, "ANOMALY_NOT_FOUND", "No anomaly was detected for this booking");
+  }
+
+  const review = await prisma.bookingAnomalyReview.findUnique({ where: { bookingId } });
+  return {
+    ...anomaly,
+    booking: {
+      totalPrice: booking.totalPrice,
+      tickets: booking.tickets.map((ticket) => ({
+        ticketCode: ticket.ticketCode,
+        seatCode: ticket.seatCode,
+        passengerName: maskName(ticket.passengerName),
+        price: ticket.price,
+        status: ticket.status,
+      })),
+    },
+    review: review
+      ? { status: review.status, note: review.note, updatedAt: review.updatedAt }
+      : { status: "open", note: null, updatedAt: null },
+    relatedBookings: candidateBookings
+      .filter((candidate) => candidate.id !== booking.id && candidate.tripId === booking.tripId)
+      .map((candidate) => ({
+        bookingCode: candidate.bookingCode,
+        passengerName: maskName(candidate.passengerName),
+        seats: getSeatCodes(candidate),
+        bookingStatus: candidate.status,
+      })),
+  };
+}
+
 async function updateAnomalyReview(bookingId, input, reviewedById) {
   const booking = await prisma.booking.findUnique({
     where: { id: bookingId },
@@ -436,6 +506,7 @@ async function updateAnomalyReview(bookingId, input, reviewedById) {
 
 module.exports = {
   listAnomalies,
+  getAnomalyDetail,
   updateAnomalyReview,
   scoreBookings,
   nameSimilarity,
