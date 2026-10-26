@@ -28,6 +28,7 @@ const updateBookingStatusSchema = z.object({
 
 module.exports = {
   bookingIdSchema,
+  dateSchema,
   listBookingsQuerySchema,
   updateBookingStatusSchema,
 };

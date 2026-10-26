@@ -24,6 +24,7 @@ import AdminPromotions from './pages/admin/AdminPromotions';
 import AdminNews from './pages/admin/AdminNews';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminReports from './pages/admin/AdminReports';
+import AdminAnomalies from './pages/admin/AdminAnomalies';
 import './styles/global.css';
 import './styles/admin.css';
 import './styles/auth.css';
@@ -82,6 +83,7 @@ function AppContent() {
             <Route path="/admin/routes" element={<AdminRoutes />} />
             <Route path="/admin/companies" element={<AdminCompanies />} />
             <Route path="/admin/bookings" element={<AdminBookings />} />
+            <Route path="/admin/anomalies" element={<AdminAnomalies />} />
             <Route path="/admin/promotions" element={<AdminPromotions />} />
             <Route path="/admin/news" element={<AdminNews />} />
             <Route path="/admin/users" element={<AdminUsers />} />
