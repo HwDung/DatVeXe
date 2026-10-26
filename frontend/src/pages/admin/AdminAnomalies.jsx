@@ -5,6 +5,7 @@ const EMPTY_FILTERS = Object.freeze({
   search: '',
   fromDate: '',
   toDate: '',
+  tripId: '',
   severity: '',
   reviewStatus: '',
 });
@@ -17,6 +18,7 @@ const severityLabels = {
 
 const reviewLabels = {
   open: 'Chờ rà soát',
+  in_review: 'Đang kiểm tra',
   reviewed: 'Đã kiểm tra',
   false_positive: 'Xác nhận hợp lệ',
 };
@@ -32,9 +34,12 @@ const AdminAnomalies = () => {
     search: '',
     fromDate: '',
     toDate: '',
+    tripId: '',
     severity: '',
     reviewStatus: '',
   });
+  const [selectedAnomaly, setSelectedAnomaly] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const fetchAnomalies = useCallback(async (page = 1, currentFilters = EMPTY_FILTERS) => {
     setScanning(true);
@@ -92,6 +97,19 @@ const AdminAnomalies = () => {
     }
   };
 
+  const showAnomalyDetail = async (bookingId) => {
+    setDetailLoading(true);
+    setError('');
+    try {
+      const response = await adminService.getAnomalyDetail(bookingId);
+      setSelectedAnomaly(response.data);
+    } catch (requestError) {
+      setError(requestError.response?.data?.error?.message || 'Không thể tải chi tiết phát hiện.');
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
   const handleFilterSubmit = (event) => {
     event.preventDefault();
     fetchAnomalies(1, filters);
@@ -135,6 +153,14 @@ const AdminAnomalies = () => {
           onChange={(event) => setFilters((current) => ({ ...current, fromDate: event.target.value }))}
         />
         <input
+          type="text"
+          className="form-control"
+          placeholder="Mã chuyến xe"
+          aria-label="Lọc theo chuyến xe"
+          value={filters.tripId}
+          onChange={(event) => setFilters((current) => ({ ...current, tripId: event.target.value }))}
+        />
+        <input
           type="date"
           className="form-control"
           aria-label="Đến ngày đi"
@@ -160,6 +186,7 @@ const AdminAnomalies = () => {
         >
           <option value="">Mọi trạng thái rà soát</option>
           <option value="open">Chờ rà soát</option>
+          <option value="in_review">Đang kiểm tra</option>
           <option value="reviewed">Đã kiểm tra</option>
           <option value="false_positive">Xác nhận hợp lệ</option>
         </select>
@@ -168,7 +195,7 @@ const AdminAnomalies = () => {
           className="btn btn-secondary"
           type="button"
           onClick={() => {
-            const cleared = { search: '', fromDate: '', toDate: '', severity: '', reviewStatus: '' };
+            const cleared = { search: '', fromDate: '', toDate: '', tripId: '', severity: '', reviewStatus: '' };
             setFilters(cleared);
             fetchAnomalies(1, cleared);
           }}
@@ -233,10 +260,18 @@ const AdminAnomalies = () => {
                       <button
                         type="button"
                         className="btn btn-sm btn-primary"
+                        disabled={savingId === item.bookingId || item.review.status === 'in_review'}
+                        onClick={() => updateReview(item.bookingId, 'in_review')}
+                      >
+                        Đang kiểm tra
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-primary"
                         disabled={savingId === item.bookingId || item.review.status === 'reviewed'}
                         onClick={() => updateReview(item.bookingId, 'reviewed')}
                       >
-                        Đã kiểm tra
+                        Đã xác nhận
                       </button>
                       <button
                         type="button"
@@ -245,6 +280,13 @@ const AdminAnomalies = () => {
                         onClick={() => updateReview(item.bookingId, 'false_positive')}
                       >
                         Hợp lệ
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-secondary"
+                        onClick={() => showAnomalyDetail(item.bookingId)}
+                      >
+                        Chi tiết
                       </button>
                       {item.review.status !== 'open' && (
                         <button
@@ -285,6 +327,60 @@ const AdminAnomalies = () => {
           </div>
         </div>
       </div>
+      {detailLoading && <div role="status">Đang tải chi tiết phát hiện...</div>}
+      {selectedAnomaly && (
+        <div
+          role="presentation"
+          onClick={() => setSelectedAnomaly(null)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 10000,
+            background: 'rgba(0,0,0,.5)',
+            display: 'grid',
+            placeItems: 'center',
+            padding: 16,
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="anomaly-detail-title"
+            onClick={(event) => event.stopPropagation()}
+            style={{ background: '#fff', borderRadius: 12, padding: 24, width: 'min(640px, 100%)', maxHeight: '90vh', overflowY: 'auto' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 id="anomaly-detail-title">Chi tiết {selectedAnomaly.bookingCode}</h3>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSelectedAnomaly(null)}>Đóng</button>
+            </div>
+            <p><strong>Điểm rủi ro:</strong> {selectedAnomaly.score}/100 — {severityLabels[selectedAnomaly.severity]}</p>
+            <p><strong>Tuyến:</strong> {selectedAnomaly.route} • {new Date(selectedAnomaly.tripDate).toLocaleDateString('vi-VN')} • {selectedAnomaly.departureTime}</p>
+            <p><strong>Trạng thái booking:</strong> {selectedAnomaly.bookingStatus} • <strong>Rà soát:</strong> {reviewLabels[selectedAnomaly.review.status]}</p>
+            <p><strong>Tổng tiền:</strong> {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(selectedAnomaly.booking.totalPrice)}</p>
+            <h4>Vé</h4>
+            <ul>
+              {selectedAnomaly.booking.tickets.map((ticket) => (
+                <li key={ticket.ticketCode}>
+                  {ticket.ticketCode} — ghế {ticket.seatCode} — {ticket.passengerName} — {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(ticket.price)} — {ticket.status}
+                </li>
+              ))}
+            </ul>
+            <h4>Lý do phát hiện</h4>
+            <ul>{selectedAnomaly.reasons.map((reason) => <li key={reason.code}>{reason.description} (+{reason.points})</li>)}</ul>
+            {selectedAnomaly.relatedBookings.length > 0 && (
+              <>
+                <h4>Booking liên quan cùng chuyến</h4>
+                <ul>
+                  {selectedAnomaly.relatedBookings.map((booking) => (
+                    <li key={booking.bookingCode}>{booking.bookingCode} — {booking.passengerName} — ghế {booking.seats.join(', ')} — {booking.bookingStatus}</li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {selectedAnomaly.review.note && <p><strong>Ghi chú rà soát:</strong> {selectedAnomaly.review.note}</p>}
+          </section>
+        </div>
+      )}
     </section>
   );
 };
