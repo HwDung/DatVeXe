@@ -62,4 +62,5 @@ export const adminService = {
   // Reports & Analytics
   getReports: (params) => api.get('/admin/reports', { params }),
   exportReportsExcel: (params) => api.get('/admin/reports/export-excel', { params, responseType: 'blob' }),
+  exportReportsPdf: (params) => api.get('/admin/reports/export-pdf', { params, responseType: 'blob' }),
 };

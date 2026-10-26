@@ -1,8 +1,43 @@
 const { Router } = require("express");
+const { z } = require("zod");
 const ExcelJS = require("exceljs");
 const { prisma } = require("../../lib/prisma");
+const { generatePdfReport } = require("./reports-pdf.service");
 
 const reportsRouter = Router();
+const reportDateSchema = z.string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine((value) => {
+    const date = new Date(`${value}T00:00:00.000Z`);
+    return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+  });
+const pdfReportQuerySchema = z.object({
+  type: z.enum(["bookings", "revenue", "trips", "overview"]).default("bookings"),
+  fromDate: reportDateSchema.optional(),
+  toDate: reportDateSchema.optional(),
+  status: z.enum(["all", "pending", "confirmed", "completed", "cancelled"]).optional(),
+  paymentStatus: z.enum(["all", "unpaid", "paid", "refunded"]).optional(),
+  companyId: z.string().optional(),
+  routeId: z.string().optional(),
+  search: z.string().optional(),
+}).refine(({ fromDate, toDate }) => !fromDate || !toDate || fromDate <= toDate, {
+  message: "Ngày bắt đầu phải trước hoặc bằng ngày kết thúc",
+  path: ["toDate"],
+});
+
+reportsRouter.get("/export-pdf", async (req, res, next) => {
+  try {
+    const { type, ...filters } = pdfReportQuerySchema.parse(req.query);
+    const buffer = await generatePdfReport({ type, filters });
+    const filename = `bao-cao-${type}-${new Date().toISOString().slice(0, 10)}.pdf`;
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Length", buffer.length);
+    res.send(buffer);
+  } catch (error) {
+    next(error);
+  }
+});
 
 // Helper to build where clause based on filters
 function buildBookingWhere(query) {

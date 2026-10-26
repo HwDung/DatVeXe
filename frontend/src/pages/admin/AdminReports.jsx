@@ -5,6 +5,9 @@ import { adminService } from '../../services/adminApi';
 const AdminReports = () => {
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [pdfReportType, setPdfReportType] = useState('bookings');
+  const [pdfExportError, setPdfExportError] = useState('');
   const [reportData, setReportData] = useState({
     summary: {
       totalBookings: 0,
@@ -274,6 +277,44 @@ const AdminReports = () => {
     }
   };
 
+  const handleExportPdf = async () => {
+    setExportingPdf(true);
+    setPdfExportError('');
+    try {
+      const params = { type: pdfReportType };
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value && value !== 'all') params[key] = value;
+      });
+
+      const response = await adminService.exportReportsPdf(params);
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `bao-cao-${pdfReportType}-${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      let message = 'Không thể xuất PDF. Vui lòng thử lại.';
+      const responseData = error?.response?.data;
+      if (responseData instanceof Blob) {
+        try {
+          const payload = JSON.parse(await responseData.text());
+          message = payload?.error?.message || payload?.message || message;
+        } catch {
+          message = 'Không thể đọc phản hồi lỗi khi xuất PDF.';
+        }
+      } else if (responseData?.error?.message || responseData?.message) {
+        message = responseData.error?.message || responseData.message;
+      }
+      setPdfExportError(message);
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
   const { summary, bookings, filterOptions } = reportData;
   const cancellationRate = summary.totalBookings > 0
     ? Math.round((summary.cancelledCount / summary.totalBookings) * 100)
@@ -285,18 +326,40 @@ const AdminReports = () => {
       <div className="reports-page-header">
         <div className="reports-page-title">
           <h1>Báo cáo & Thống kê Đặt vé</h1>
-          <p>Phân tích hiệu quả kinh doanh, doanh thu và xuất dữ liệu báo cáo ra file Excel</p>
+          <p>Phân tích hiệu quả kinh doanh, doanh thu và xuất báo cáo theo dữ liệu thực tế</p>
         </div>
-        <button
-          type="button"
-          className="btn-excel"
-          onClick={handleExportExcel}
-          disabled={exporting || bookings.length === 0}
-        >
-          <i className="bi bi-file-earmark-excel"></i>
-          {exporting ? 'Đang xuất Excel...' : 'Xuất Báo cáo Excel'}
-        </button>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px' }}>
+          <select
+            className="form-control"
+            aria-label="Loại báo cáo PDF"
+            value={pdfReportType}
+            onChange={(event) => setPdfReportType(event.target.value)}
+          >
+            <option value="bookings">Báo cáo đặt vé</option>
+            <option value="revenue">Báo cáo doanh thu</option>
+            <option value="trips">Báo cáo chuyến xe</option>
+            <option value="overview">Báo cáo tổng quan</option>
+          </select>
+          <button type="button" className="btn btn-primary" onClick={handleExportPdf} disabled={exportingPdf}>
+            <i className="bi bi-file-earmark-pdf"></i>
+            {exportingPdf ? 'Đang tạo PDF...' : 'Xuất PDF'}
+          </button>
+          <button
+            type="button"
+            className="btn-excel"
+            onClick={handleExportExcel}
+            disabled={exporting || bookings.length === 0}
+          >
+            <i className="bi bi-file-earmark-excel"></i>
+            {exporting ? 'Đang xuất Excel...' : 'Xuất Báo cáo Excel'}
+          </button>
+        </div>
       </div>
+      {pdfExportError && (
+        <div role="alert" className="alert alert-danger" style={{ marginBottom: '16px' }}>
+          {pdfExportError}
+        </div>
+      )}
 
       {/* KPI Summary Cards */}
       <div className="reports-kpi-grid">
