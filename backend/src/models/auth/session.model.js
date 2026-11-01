@@ -23,7 +23,7 @@ function findActiveSessionById(sessionId, userId, now) {
     include: {
       user: {
         select: {
-          companyMembership: { include: { company: { select: { id: true, name: true } } } },
+          companyMembership: { include: { company: { select: { id: true, name: true } }, roleDefinition: { include: { permissions: { include: { permission: true } } } } } },
           id: true,
           email: true,
           fullName: true,

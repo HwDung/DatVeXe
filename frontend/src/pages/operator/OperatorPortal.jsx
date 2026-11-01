@@ -253,7 +253,7 @@ export function BusesPage() {
 }
 export function EmployeesPage() {
   const { user } = useAuth();
-  const owner = user.companyMembership.role === "owner";
+  const owner = user.permissions?.includes("operator.employees.managers");
   const state = useData("/operator/employees");
   const [edit, setEdit] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -828,31 +828,24 @@ export default function OperatorPortal() {
   const member = user.companyMembership;
   if (isAdminUser(user) || !member?.isActive) return <Navigate to={userHome(user)} replace />;
   const owner = member.role === "owner";
+  const can = key => user.permissions?.includes(key);
   const base = owner ? "/company" : "/staff";
   if (!location.pathname.startsWith(base))
     return <Navigate to={`${base}/bookings`} replace />;
   const links = [
-    ...(owner
-      ? [
-          ["buses", "Quản lý xe"],
-          ["trips", "Quản lý chuyến"],
-        ]
-      : []),
+    ...(can("operator.fleet.manage") ? [["buses", "Quản lý xe"]] : []),
+    ...(can("operator.trips.manage") ? [["trips", "Quản lý chuyến"]] : []),
     ["bookings", "Quản lý vé"],
     ["support", "Trả lời khách hàng"],
     ["email-jobs", "Email vé"],
     ["counter", "Bán vé tại quầy"],
     ["exchange", "Đổi ghế / chuyến"],
     ["qr-info", "Quét QR xem vé"],
-    ...(member.role === "staff" ? [["qr-board", "Quét QR lên xe"]] : []),
+    ...(can("operator.board") ? [["qr-board", "Quét QR lên xe"]] : []),
     ...(!owner ? [["customers", "Thông tin khách"]] : []),
-    ...(["owner", "manager"].includes(member.role)
-      ? [
-          ["employees", "Quản lý nhân viên"],
-          ["payment-issues", "Đối soát thanh toán"],
-        ]
-      : []),
-    ...(owner ? [["revenue", "Thống kê doanh thu"]] : []),
+    ...(can("operator.employees.manage") ? [["employees", "Quản lý nhân viên"]] : []),
+    ...(can("operator.payment-issues.read") ? [["payment-issues", "Đối soát thanh toán"]] : []),
+    ...(can("operator.revenue.read") ? [["revenue", "Thống kê doanh thu"]] : []),
   ];
   return (
     <div className="op-layout">
@@ -881,26 +874,23 @@ export default function OperatorPortal() {
           <Route path={`${base}/counter`} element={<CounterSalePage />} />
           <Route path={`${base}/exchange`} element={<ExchangePage />} />
           <Route path={`${base}/qr-info`} element={<QrInfoPage />} />
-          {member.role === "staff" && <Route path={`${base}/qr-board`} element={<QrBoardPage />} />}
-          {["owner", "manager"].includes(member.role) && (
+          {can("operator.board") && <Route path={`${base}/qr-board`} element={<QrBoardPage />} />}
+          {can("operator.payment-issues.read") && (
             <Route
               path={`${base}/payment-issues`}
               element={<PaymentIssuesPage />}
             />
           )}
-          {owner ? (
-            <>
-              <Route path={`${base}/buses`} element={<BusesPage />} />
-              <Route path={`${base}/trips`} element={<TripsPage />} />
-              <Route path={`${base}/revenue`} element={<RevenuePage />} />
-            </>
-          ) : (
+          {can("operator.fleet.manage") && <Route path={`${base}/buses`} element={<BusesPage />} />}
+          {can("operator.trips.manage") && <Route path={`${base}/trips`} element={<TripsPage />} />}
+          {can("operator.revenue.read") && <Route path={`${base}/revenue`} element={<RevenuePage />} />}
+          {!owner && (
             <Route
               path={`${base}/customers`}
               element={<BookingsPage customers />}
             />
           )}
-          {["owner", "manager"].includes(member.role) && (
+          {can("operator.employees.manage") && (
             <Route path={`${base}/employees`} element={<EmployeesPage />} />
           )}
           <Route

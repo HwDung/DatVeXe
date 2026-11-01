@@ -35,6 +35,7 @@ const TripCard = ({ trip, tripDate }) => {
         <img
           src={trip.image || 'https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&q=80'}
           alt={trip.company}
+          loading="lazy"
         />
       </div>
 
@@ -46,6 +47,7 @@ const TripCard = ({ trip, tripDate }) => {
                 {trip.company}
               </Link>
               <div className="bus-type">{trip.busType}</div>
+              {trip.isDemo && <small>Lịch và giá demo · <a href={trip.sourceUrl} target="_blank" rel="noreferrer">Nguồn nhà xe</a></small>}
             </div>
             <div className="trip-rating">
               <i className="bi bi-star-fill" style={{ color: '#F59E0B' }}></i> {trip.rating || 4.5} ({trip.reviews || 0})

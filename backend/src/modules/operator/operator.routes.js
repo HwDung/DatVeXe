@@ -3,7 +3,7 @@ const { z } = require("zod");
 const bcrypt = require("bcryptjs");
 const { prisma } = require("../../lib/prisma");
 const { authenticate } = require("../../middleware/authenticate");
-const { requireRole } = require("../../middleware/authorization");
+const { requireRole, requirePermission } = require("../../middleware/authorization");
 const { HttpError } = require("../../utils/http-error");
 const { updateBookingStatus } = require("../admin/bookings.service");
 const { receivePayment } = require("../bookings/payments.service");
@@ -69,32 +69,27 @@ async function operationalAccess(req, _res, next) {
   try {
     const member = await prisma.companyMembership.findUnique({
       where: { userId: req.auth.userId },
-      include: { company: true },
+      include: { company: true, roleDefinition: { include: { permissions: { include: { permission: true } } } } },
     });
     if (
       !member?.isActive ||
-      !["owner", "manager", "staff"].includes(member.role)
+      !member.roleDefinition?.permissions?.some(row => row.permission.key === "operator.access")
     )
       throw new HttpError(
         403,
         "NO_COMPANY_ACCESS",
         "Tài khoản chưa được cấp quyền nhà xe",
       );
-    req.member = member;
+    req.member = { ...member, permissions: member.roleDefinition.permissions.map(row => row.permission.key) };
     next();
   } catch (e) {
     next(e);
   }
 }
-const roles =
-  (...allowed) =>
-  (req, _res, next) => {
-    if (!allowed.includes(req.member.role))
-      return next(
-        new HttpError(403, "FORBIDDEN", "Không đủ quyền thực hiện thao tác"),
-      );
-    next();
-  };
+const requireOperatorPermission = key => (req, _res, next) => {
+  if (!req.member?.permissions?.includes(key)) return next(new HttpError(403, 'FORBIDDEN', 'Không đủ quyền thực hiện thao tác'));
+  next();
+};
 async function ownRecord(tx, model, id, companyId) {
   const result = await tx[model].findFirst({
     where: {
@@ -131,6 +126,7 @@ function bookingWhere(companyId, query) {
   return where;
 }
 router.use(authenticate, operationalAccess);
+router.use(['/bookings', '/customers', '/counter', '/qr', '/email-jobs'], requireOperatorPermission('operator.work'));
 router.get('/email-jobs',wrap(async(req,res)=>res.json(await require('../ticketing/email-management.service').emailJobs(req.member.companyId))));
 router.post('/bookings/:id/resend-email',require('express-rate-limit').rateLimit({windowMs:60000,limit:5,keyGenerator:req=>req.auth.userId,standardHeaders:'draft-7',legacyHeaders:false}),wrap(async(req,res)=>res.status(202).json(await require('../ticketing/email-management.service').retryEmail(req.params.id,req.member.companyId))));
 const {
@@ -250,14 +246,14 @@ router.patch(
 );
 router.get(
   "/employees",
-  roles("owner", "manager"),
+  requireOperatorPermission("operator.employees.manage"),
   wrap(async (req, res) =>
     res.json(
       await prisma.companyMembership.findMany({
         where: {
           companyId: req.member.companyId,
           role: {
-            in: req.member.role === "owner" ? ["manager", "staff"] : ["staff"],
+            in: req.member.permissions.includes("operator.employees.managers") ? ["manager", "staff"] : ["staff"],
           },
         },
         select: memberSelect,
@@ -267,10 +263,10 @@ router.get(
 );
 router.post(
   "/employees",
-  roles("owner", "manager"),
+  requireOperatorPermission("operator.employees.manage"),
   wrap(async (req, res) => {
     const data = memberSchema.parse(req.body);
-    if (req.member.role === "manager" && data.role !== "staff")
+    if (!req.member.permissions.includes("operator.employees.managers") && data.role !== "staff")
       throw new HttpError(
         403,
         "FORBIDDEN",
@@ -303,7 +299,7 @@ router.post(
 );
 router.patch(
   "/employees/:id",
-  roles("owner", "manager"),
+  requireOperatorPermission("operator.employees.manage"),
   wrap(async (req, res) => {
     const data = memberUpdateSchema.parse(req.body);
     res.json(
@@ -317,7 +313,7 @@ router.patch(
         if (
           target.userId === req.auth.userId ||
           target.role === "owner" ||
-          (req.member.role === "manager" &&
+          (!req.member.permissions.includes("operator.employees.managers") &&
             (target.role !== "staff" || (data.role && data.role !== "staff")))
         )
           throw new HttpError(
@@ -344,7 +340,7 @@ router.patch(
 );
 router.get(
   "/buses",
-  roles("owner"),
+  requireOperatorPermission("operator.fleet.manage"),
   wrap(async (req, res) =>
     res.json(
       await prisma.bus.findMany({
@@ -356,7 +352,7 @@ router.get(
 );
 router.post(
   "/buses",
-  roles("owner"),
+  requireOperatorPermission("operator.fleet.manage"),
   wrap(async (req, res) =>
     res.status(201).json(
       await prisma.bus.create({
@@ -370,7 +366,7 @@ router.post(
 );
 router.put(
   "/buses/:id",
-  roles("owner"),
+  requireOperatorPermission("operator.fleet.manage"),
   wrap(async (req, res) => {
     const data = busSchema.parse(req.body);
     res.json(
@@ -405,7 +401,7 @@ router.put(
 );
 router.delete(
   "/buses/:id",
-  roles("owner"),
+  requireOperatorPermission("operator.fleet.manage"),
   wrap(async (req, res) => {
     await prisma.$transaction(async (tx) => {
       const current = await ownRecord(
@@ -427,14 +423,14 @@ router.delete(
 );
 router.get(
   "/routes",
-  roles("owner"),
+  requireOperatorPermission("operator.trips.manage"),
   wrap(async (_req, res) =>
     res.json(await prisma.route.findMany({ orderBy: { origin: "asc" } })),
   ),
 );
 router.get(
   "/trips",
-  roles("owner"),
+  requireOperatorPermission("operator.trips.manage"),
   wrap(async (req, res) =>
     res.json(
       await prisma.trip.findMany({
@@ -485,17 +481,17 @@ async function saveTrip(req, update) {
 }
 router.post(
   "/trips",
-  roles("owner"),
+  requireOperatorPermission("operator.trips.manage"),
   wrap(async (req, res) => res.status(201).json(await saveTrip(req, false))),
 );
 router.put(
   "/trips/:id",
-  roles("owner"),
+  requireOperatorPermission("operator.trips.manage"),
   wrap(async (req, res) => res.json(await saveTrip(req, true))),
 );
 router.delete(
   "/trips/:id",
-  roles("owner"),
+  requireOperatorPermission("operator.trips.manage"),
   wrap(async (req, res) => {
     await prisma.$transaction(async (tx) => {
       const current = await ownRecord(
@@ -518,7 +514,7 @@ router.delete(
 );
 router.get(
   "/revenue",
-  roles("owner"),
+  requireOperatorPermission("operator.revenue.read"),
   wrap(async (req, res) => {
     const f = z
       .object({
@@ -672,7 +668,7 @@ router.post(
 );
 router.post(
   "/qr/board",
-  roles("staff"),
+  requireOperatorPermission("operator.board"),
   wrap(async (req, res) => {
     const { qr, tripId, tripDate } = z
       .object({
@@ -695,7 +691,7 @@ router.post(
 );
 router.get(
   "/payment-issues",
-  roles("owner", "manager"),
+  requireOperatorPermission("operator.payment-issues.read"),
   wrap(async (req, res) =>
     res.json(
       await prisma.paymentAttempt.findMany({
@@ -719,7 +715,7 @@ router.get(
 );
 
 // Admin explicitly grants operational memberships; public registration cannot grant roles.
-accessRouter.use(authenticate, requireRole("admin"));
+accessRouter.use(authenticate, requireRole("admin"), requirePermission("admin.access"));
 accessRouter.get(
   "/",
   wrap(async (_req, res) =>
@@ -767,6 +763,6 @@ module.exports = {
   operatorRouter: router,
   companyAccessRouter: accessRouter,
   operationalAccess,
-  roles,
+  requireOperatorPermission,
   bookingWhere,
 };

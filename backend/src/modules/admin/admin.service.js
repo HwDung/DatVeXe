@@ -26,7 +26,11 @@ function serializeUser(user) {
     status: user.isLocked ? "locked" : "active",
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
-    roles: user.roles.map(({ role }) => role.name),
+    companyMembership: user.companyMembership || null,
+    roles: [...new Set([
+      ...user.roles.map(({ role }) => role.name),
+      ...(user.companyMembership?.isActive && user.companyMembership.roleDefinition ? [user.companyMembership.roleDefinition.name] : []),
+    ])],
   };
 }
 

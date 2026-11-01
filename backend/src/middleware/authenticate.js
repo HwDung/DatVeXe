@@ -1,3 +1,4 @@
+const { authorizationFor } = require('../modules/auth/database-authorization');
 const jwt = require("jsonwebtoken");
 const { env } = require("../config/env");
 const {
@@ -50,14 +51,7 @@ async function authenticate(request, _response, next) {
     return;
   }
 
-  const roles = session.user.roles.map(({ role }) => role.name);
-  const permissions = [
-    ...new Set(
-      session.user.roles.flatMap(({ role }) =>
-        role.permissions.map(({ permission }) => permission.key),
-      ),
-    ),
-  ];
+  const { roles, permissions } = authorizationFor(session.user);
 
   request.auth = {
     userId: session.user.id,

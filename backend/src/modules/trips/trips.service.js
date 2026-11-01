@@ -126,9 +126,9 @@ async function searchTripsService(query) {
 
 async function getFilterOptionsService() {
   const [companies, buses, routes, priceAgg] = await Promise.all([
-    prisma.busCompany.findMany({ select: { id: true, name: true, rating: true } }),
-    prisma.bus.findMany({ select: { type: true }, distinct: ["type"] }),
-    prisma.route.findMany({ select: { origin: true, destination: true } }),
+    prisma.busCompany.findMany({ where: { trips: { some: { isActive: true } } }, select: { id: true, name: true, rating: true } }),
+    prisma.bus.findMany({ where: { trips: { some: { isActive: true } } }, select: { type: true }, distinct: ["type"] }),
+    prisma.route.findMany({ where: { trips: { some: { isActive: true } } }, select: { origin: true, destination: true } }),
     prisma.trip.aggregate({
       _min: { price: true },
       _max: { price: true },

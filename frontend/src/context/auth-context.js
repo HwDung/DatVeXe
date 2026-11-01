@@ -3,14 +3,11 @@ import { createContext, useContext } from "react";
 export const AuthContext = import.meta.hot?.data.context ?? createContext(null);
 if (import.meta.hot) import.meta.hot.data.context = AuthContext;
 export function isAdminUser(user) {
-  return Boolean(
-    user?.roles?.some((role) => String(role).toLowerCase() === "admin"),
-  );
+  return Boolean(user?.permissions?.includes('admin.access'));
 }
 
 export function isCustomerUser(user) {
-  return Boolean(user && !user.companyMembership && user.roles?.length &&
-    user.roles.every(role => String(role).toUpperCase() === 'USER'));
+  return Boolean(user && !user.companyMembership && user.permissions?.includes('booking.create') && !user.permissions.includes('admin.access'));
 }
 
 export function useAuth() {

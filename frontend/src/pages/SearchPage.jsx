@@ -78,6 +78,8 @@ const SearchPage = () => {
         setTrips(
           data.map((trip) => ({
             id: trip.id,
+            isDemo: trip.isDemo,
+            sourceUrl: trip.sourceUrl,
             company: trip.company?.name || 'Nhà xe',
             busType: trip.bus?.type || 'Giường nằm',
             rating: trip.company?.rating ?? 4.5,
