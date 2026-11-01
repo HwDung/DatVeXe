@@ -1,3 +1,4 @@
+const { authorizationFor } = require('./database-authorization');
 const bcrypt = require("bcryptjs");
 const sessionModel = require("../../models/auth/session.model");
 const userModel = require("../../models/auth/user.model");
@@ -17,14 +18,7 @@ function serializeUser(user) {
     email: user.email,
     fullName: user.fullName,
     companyMembership: user.companyMembership || null,
-    roles: user.roles.map(({ role }) => role.name),
-    permissions: [
-      ...new Set(
-        user.roles.flatMap(({ role }) =>
-          role.permissions.map(({ permission }) => permission.key),
-        ),
-      ),
-    ],
+    ...authorizationFor(user),
   };
 }
 
@@ -53,7 +47,7 @@ async function register(input) {
       passwordHash,
     });
     const tokens = await createSession(user.id);
-    return { ...tokens, user: { id: user.id, email: user.email, fullName: user.fullName, roles: ["USER"], permissions: [] } };
+    return { ...tokens, user: serializeUser(user) };
   } catch (error) {
     if (typeof error === "object" && error !== null && "code" in error && error.code === "P2002") {
       throw new HttpError(409, "EMAIL_TAKEN", "An account with this email already exists");

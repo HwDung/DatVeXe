@@ -70,9 +70,9 @@ const AdminUsers = () => {
         if(!currentUser.companyId) throw new Error('Vui lòng chọn nhà xe.');
         if(currentUser.membership && currentUser.membership.companyId !== currentUser.companyId) throw new Error('Hãy thu hồi quyền nhà xe cũ tại mục Phân quyền nhà xe trước khi chuyển đơn vị.');
         await api.post('/admin/company-access',{userId:currentUser.id,companyId:currentUser.companyId,role:currentUser.role});
-        await adminService.updateUser(currentUser.id,{roles:['user']});
+
       } else {
-        await adminService.updateUser(currentUser.id,{roles:[currentUser.role]});
+        await adminService.updateUser(currentUser.id,{roles:[currentUser.role === 'user' ? 'USER' : currentUser.role]});
         if(currentUser.membership) await api.delete('/admin/company-access/'+currentUser.membership.id);
       }
       setIsModalOpen(false); await fetchUsers();

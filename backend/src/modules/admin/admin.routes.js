@@ -1,7 +1,7 @@
 const { Router } = require("express");
 const { prisma } = require("../../lib/prisma");
 const { authenticate } = require("../../middleware/authenticate");
-const { requireRole } = require("../../middleware/authorization");
+const { requireRole, requirePermission } = require("../../middleware/authorization");
 const { tripScheduleRouter } = require("./trip-schedule.routes");
 const { tripManagementRouter } = require("./trip-management.routes");
 const { pickupDropoffPointsRouter } = require("./pickup-dropoff-points.routes");
@@ -17,7 +17,7 @@ const { receiveExcelFile } = require("./trip-import.middleware");
 
 const adminRouter = Router();
 
-adminRouter.use(authenticate, requireRole("admin"));
+adminRouter.use(authenticate, requireRole("admin"), requirePermission("admin.access"));
 adminRouter.use("/integrations", require("./integrations.routes").integrationsRouter);
 adminRouter.get(['/payment-issues','/momo-issues'], async(_req,res,next)=>{
   try{res.json(await prisma.paymentAttempt.findMany({where:{status:'refund_required'},include:{booking:{select:{bookingCode:true,passengerName:true,passengerPhone:true}}},orderBy:{createdAt:'desc'}}));}catch(e){next(e);}

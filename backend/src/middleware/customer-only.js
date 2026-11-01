@@ -1,7 +1,6 @@
 const { HttpError } = require('../utils/http-error');
 function isCustomer(auth) {
-  return Boolean(auth && !auth.companyMembership && auth.roles?.length &&
-    auth.roles.every(role => String(role).toUpperCase() === 'USER'));
+  return Boolean(auth && !auth.companyMembership && auth.permissions?.includes('booking.create') && !auth.permissions.includes('admin.access'));
 }
 function customerOnly(req, _res, next) {
   if (!isCustomer(req.auth)) return next(new HttpError(403, 'CUSTOMER_ONLY', 'Chức năng này chỉ dành cho tài khoản khách hàng.'));

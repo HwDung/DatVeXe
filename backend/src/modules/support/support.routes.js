@@ -13,7 +13,7 @@ const humanLimiter = rateLimit({ windowMs: 60000, limit: 30, standardHeaders: 'd
   message: { error: { code: 'SUPPORT_RATE_LIMIT', message: 'Bạn gửi quá nhanh. Vui lòng chờ một phút.' } } });
 
 supportRouter.get('/companies', authenticate, customerOnly, wrap(async (_req, res) => res.json(await prisma.busCompany.findMany({
-  where: { members: { some: { isActive: true, role: { in: ['owner', 'manager', 'staff'] }, user: { isLocked: false } } } },
+  where: { members: { some: { isActive: true, roleDefinition: { permissions: { some: { permission: { key: 'operator.support' } } } }, user: { isLocked: false } } } },
   select: { id: true, name: true }, orderBy: { name: 'asc' },
 }))));
 for (const [prefix, staff] of [['conversations', false], ['staff/conversations', true]]) {

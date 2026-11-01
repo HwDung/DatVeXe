@@ -1,6 +1,7 @@
 const { prisma } = require("../../lib/prisma");
 
 const userSelect = {
+  companyMembership: { include: { company: { select: { id: true, name: true } }, roleDefinition: true } },
   id: true,
   email: true,
   fullName: true,

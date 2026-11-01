@@ -245,3 +245,7 @@ Hướng dẫn dành cho người chưa có merchant/tên miền/SMTP: [HUONG_DA
 Admin có trang `/admin/integrations`; nhà xe/nhân viên có `/company/email-jobs` và `/staff/email-jobs`. Trang quản trị cho kiểm tra kết nối, gửi thư thử tới chính email tài khoản quản trị, xem giao dịch và hàng đợi. Gửi lại email luôn kiểm tra trạng thái paid, phiên bản QR, nhà xe và thời gian chờ; không cho truyền email nhận tùy ý. Khách có API `/api/ticketing/bookings/:id/delivery` được bảo vệ bằng tài khoản sở hữu hoặc số điện thoại đúng để xem trạng thái gửi vé.
 
 Chạy `npm run integrations:check` trong backend để kiểm tra các kết nối mà không gửi thư/thu tiền. Cổng 587 dùng `SMTP_SECURE=false` + STARTTLS; cổng 465 dùng `true`. Hướng dẫn đầy đủ: [HUONG_DAN_VNPAY_EMAIL.md](HUONG_DAN_VNPAY_EMAIL.md). Khi chạy integration tests với database phát triển, tạm dừng server/worker dùng cùng DB để worker thật không xử lý fixture email của tests.
+
+## Bộ seed và tài khoản demo
+
+Xem [SEED_DEMO.md](SEED_DEMO.md) để biết 5 vai trò lưu trong database, tài khoản demo, cách chạy migration/seed và nguồn dữ liệu/ảnh nhà xe.

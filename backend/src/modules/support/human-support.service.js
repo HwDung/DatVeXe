@@ -4,11 +4,10 @@ const { HttpError } = require('../../utils/http-error');
 const messageSchema = z.object({ content: z.string().trim().min(1).max(2000) }).strict();
 const createSchema = messageSchema.extend({ companyId: z.string().min(1).max(30) }).strict();
 const idSchema = z.string().min(1).max(30);
-const staffRoles = ['owner', 'manager', 'staff'];
 
 function staffCompany(auth) {
   const member = auth.companyMembership;
-  if (!member?.isActive || !staffRoles.includes(member.role)) {
+  if (!member?.isActive || !auth.permissions?.includes('operator.support')) {
     throw new HttpError(403, 'NO_COMPANY_ACCESS', 'Bạn chưa có quyền hỗ trợ của nhà xe.');
   }
   return member.companyId;
@@ -41,7 +40,7 @@ async function create(auth, input, db = prisma) {
   const data = createSchema.parse(input);
   // Only offer companies which have at least one enabled, unlocked support account.
   const company = await db.busCompany.findFirst({ where: { id: data.companyId,
-    members: { some: { isActive: true, role: { in: staffRoles }, user: { isLocked: false } } } }, select: { id: true } });
+    members: { some: { isActive: true, roleDefinition: { permissions: { some: { permission: { key: 'operator.support' } } } }, user: { isLocked: false } } } }, select: { id: true } });
   if (!company) throw new HttpError(409, 'SUPPORT_UNAVAILABLE', 'Nhà xe chưa có nhân viên được cấp quyền hỗ trợ.');
   return db.supportConversation.create({ data: { customerId: auth.userId, companyId: data.companyId,
     messages: { create: { senderId: auth.userId, senderRole: 'customer', content: data.content } } } });

@@ -44,6 +44,7 @@ model Role {
   createdAt   DateTime         @default(now())
   users       UserRole[]
   permissions RolePermission[]
+  memberships CompanyMembership[]
 }
 
 model Permission {
@@ -78,6 +79,7 @@ model BusCompany {
   id          String   @id @default(cuid()) @db.NVarChar(30)
   name        String   @unique @db.NVarChar(100)
   logo        String?  @db.NVarChar(500)
+  website     String?  @db.NVarChar(500)
   description String?  @db.NVarChar(500)
   rating      Float    @default(0)
   totalReviews Int     @default(0)
@@ -94,6 +96,8 @@ model Bus {
   name        String     @db.NVarChar(100)
   type        String     @db.NVarChar(50) // Giường nằm 40 chỗ, Limousine 22 phòng, etc.
   totalSeats  Int
+  image       String?    @db.NVarChar(1000)
+  imageSourceUrl String? @db.NVarChar(1000)
   companyId   String     @db.NVarChar(30)
   company     BusCompany @relation(fields: [companyId], references: [id], onDelete: Cascade)
   createdAt   DateTime   @default(now())
@@ -140,6 +144,8 @@ model Trip {
   price         Int        // in VND, e.g. 280000
   availableDate DateTime?  // specific date, null = recurring
   isActive      Boolean    @default(true)
+  sourceUrl     String?    @db.NVarChar(1000)
+  isDemo        Boolean    @default(false)
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
   route         Route      @relation(fields: [routeId], references: [id], onUpdate: NoAction, onDelete: NoAction)
@@ -266,7 +272,8 @@ model CompanyMembership {
   id String @id @default(cuid()) @db.NVarChar(30)
   userId String @unique @db.NVarChar(30)
   companyId String @db.NVarChar(30)
-  role String @db.NVarChar(20)
+  role String @db.NVarChar(50)
+  roleDefinition Role @relation(fields: [role], references: [name], onDelete: NoAction, onUpdate: NoAction)
   isActive Boolean @default(true)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   company BusCompany @relation(fields: [companyId], references: [id], onDelete: NoAction)

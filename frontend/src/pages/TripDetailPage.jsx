@@ -30,6 +30,10 @@ const TripDetailPage = () => {
           loading: false,
           trip: {
             id: data.id,
+            image: data.bus?.image,
+            imageSourceUrl: data.bus?.imageSourceUrl,
+            sourceUrl: data.sourceUrl,
+            isDemo: data.isDemo,
             company: data.company?.name || 'Nhà xe',
             busType: data.bus?.type || 'Thông tin xe chưa cập nhật',
             rating: Number(data.company?.rating ?? 0),
@@ -121,6 +125,11 @@ const TripDetailPage = () => {
 
         <div className="trip-detail-grid">
           <div className="trip-detail-main">
+            {trip.image && <section className="trip-detail-section">
+              <img src={trip.image} alt={`Ảnh minh họa xe ${trip.company}`} style={{ width: '100%', maxHeight: 360, objectFit: 'contain', borderRadius: 12 }} />
+              <p>Ảnh minh họa đội xe {trip.company}. <a href={trip.imageSourceUrl} target="_blank" rel="noreferrer">Nguồn ảnh</a></p>
+              {trip.isDemo && <p>Lịch khởi hành, thời lượng, số chỗ và giá vé phục vụ demo, không phải lịch bán vé trực tiếp của hãng. <a href={trip.sourceUrl} target="_blank" rel="noreferrer">Xem thông tin nhà xe</a></p>}
+            </section>}
             <section className="trip-detail-section trip-itinerary">
               <div className="trip-section-heading">
                 <h2>Hành trình</h2>
