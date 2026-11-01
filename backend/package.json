@@ -1,0 +1,44 @@
+{
+  "name": "datvexe-api",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:seed": "node prisma/seed.js",
+    "test": "node --test --test-concurrency=1",
+    "integrations:check": "node scripts/check-integrations.js"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.8.2",
+    "bcryptjs": "^3.0.2",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "exceljs": "^4.4.0",
+    "express": "^5.1.0",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.5.0",
+    "nodemailer": "^10.2.1",
+    "pdfmake": "^0.2.23",
+    "qrcode": "^1.5.4",
+    "zod": "^3.24.3"
+  },
+  "devDependencies": {
+    "@zxing/library": "^0.23.0",
+    "pngjs": "^7.0.0",
+    "prisma": "^6.8.2"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
+  }
+}
