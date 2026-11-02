@@ -1,5 +1,3 @@
-> **Cổng thanh toán hiện tại: VNPAY sandbox.** Đã thay MoMo trên giao diện và luồng tạo thanh toán mới. Làm theo [HUONG_DAN_VNPAY_EMAIL.md](HUONG_DAN_VNPAY_EMAIL.md). Các phần MoMo bên dưới là tài liệu lịch sử; chưa bật nhận tiền thật từ VNPAY khi chưa có tài khoản/khóa và IPN được khai báo.
-
 # Rightway - Hệ thống Đặt Vé Xe Trực Tuyến & Trang Quản Trị Admin
 
 Dự án fullstack đặt vé xe khách Rightway gồm **Backend Express (JavaScript + Prisma + SQL Server)** và **Frontend React (Vite + React Router)** mô phỏng sát 100% thiết kế giao diện Figma, kèm theo **Trang Quản trị Admin**.
@@ -172,24 +170,6 @@ API `/api/operator/*` luôn lấy `companyId` từ membership đã xác thực; 
 - `/api/bookings/my` và `/my-bookings` yêu cầu đăng nhập, chỉ lấy `userId` từ phiên. Xem/tra cứu/hủy một booking cần tài khoản sở hữu hoặc đúng điện thoại đặt vé. Khách vãng lai cần nhập mã vé và điện thoại. Booking `completed` không được hủy; ngày khởi hành đã qua (theo múi giờ Việt Nam) không được đặt.
 - Frontend có thể cấu hình URL API bằng `VITE_API_URL`, mặc định `http://localhost:3000/api`.
 
-### Kiểm thử các sửa đổi
-
-```powershell
-# backend: bộ test không ghi database
-cd backend
-npm test
-# Kiểm thử HTTP và SQL Server với dữ liệu riêng, tự dọn sau kiểm thử
-$env:RUN_DB_TESTS='1'
-node --test tests/operator.integration.test.js
-Remove-Item Env:RUN_DB_TESTS
-# frontend
-cd ../frontend
-npm run lint
-npm run build
-```
-
-Test tích hợp tạo fixture riêng cho hai nhà xe và ba cấp nhân sự; kiểm tra cách ly dữ liệu, chống nâng quyền, thu tiền trùng, cập nhật khách/ticket, giới hạn sửa xe/chuyến, chặn đặt ngày cũ, quyền xem/hủy vé, thống kê và khóa nhân viên. Chỉ bật `RUN_DB_TESTS` với database phát triển dùng cho kiểm thử.
-
 
 ### Giữ ghế 5 phút, vé tại quầy và QR
 
@@ -201,35 +181,6 @@ Test tích hợp tạo fixture riêng cho hai nhà xe và ba cấp nhân sự; k
 - `/staff/qr-board` hoặc `/company/qr-board`: chọn chuyến hôm nay, quét, kiểm tra thông tin và nhấn **Xác nhận khách đã lên xe**. API kiểm tra chữ ký, phiên bản QR, nhà xe, chuyến, ngày, trạng thái thanh toán, trạng thái vé và chống xác nhận trùng. Camera cần HTTPS hoặc localhost và quyền camera của trình duyệt; chọn ảnh là phương án thay thế.
 - QR được ký HMAC-SHA256, chứa mã vé, ghế, tên hành khách, chuyến, tuyến, ngày/giờ và phiên bản. Không chứa email/điện thoại hoặc khóa bí mật. Trạng thái hiệu lực luôn lấy từ database; không tin thông tin tự khai trong mã QR. QR của booking cũ không có hiệu lực sau đổi vé/sửa liên hệ.
 - Sau thu tiền hoặc IPN MoMo hợp lệ, đơn tự chuyển `confirmed/paid`, ticket được xác nhận và `TicketEmailJob` được tạo trong cùng transaction. Job email chứa phiên bản vé, tự thử lại khi SMTP lỗi, không làm mất giao dịch thanh toán. Job của phiên bản cũ bị bỏ qua. Có thể tải QR tại trang tra cứu và yêu cầu gửi lại email tới đúng địa chỉ đã lưu trên đơn. Trong trường hợp tiến trình dừng sau khi SMTP nhận thư nhưng trước khi ghi trạng thái, email có thể được gửi lặp; tính hợp lệ và chống quét trùng vẫn theo database.
-
-### Cấu hình MoMo thật và email
-
-Điền biến trong `backend/.env` theo `backend/.env.example`, không commit khóa thật:
-
-- `MOMO_ENV=production`, `MOMO_PARTNER_CODE`, `MOMO_ACCESS_KEY`, `MOMO_SECRET_KEY`: lấy từ tài khoản merchant MoMo đã được cấp quyền production. Đây là cấu hình merchant chung của nền tảng.
-- `MOMO_IPN_URL=https://<api-domain>/api/ticketing/momo/ipn`: URL HTTPS công khai để MoMo gọi từ server; không dùng localhost. `MOMO_REDIRECT_URL=https://<frontend-domain>/payment/momo-return`: trang khách quay về sau khi trả tiền. Cập nhật `CORS_ORIGIN`, `VITE_API_URL` và cấu hình cookie theo tên miền triển khai.
-- `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`: tài khoản gửi thư của nhà cung cấp SMTP. Cổng 587 yêu cầu STARTTLS; cổng 465 dùng `SMTP_SECURE=true`. Khi chưa có SMTP, thanh toán vẫn được lưu và job chờ gửi, QR có thể tải trực tiếp. Khi cấu hình xong và khởi động lại, worker xử lý hàng đợi.
-- `TICKET_QR_SECRET`: khóa riêng ổn định tối thiểu 32 ký tự. Bỏ trống sẽ dùng khóa dẫn xuất riêng từ `JWT_ACCESS_SECRET`; đổi khóa sẽ làm QR đã phát hành không còn xác minh được.
-
-Backend gọi `captureWallet` tại `https://payment.momo.vn/v2/gateway/api/create`, ký và xác minh HMAC-SHA256, lưu order/request/amount trước khi gọi cổng, dùng lại cùng requestId khi timeout. Chỉ IPN đã xác minh mới ghi nhận thanh toán. Tham số trên URL khách quay về không được dùng để đánh dấu `paid`. IPN kiểm tra partner/order/request/amount và chữ ký, chống ghi biên nhận/email lặp và trả HTTP 204 khi đã xử lý.
-
-Nếu MoMo xác nhận tiền sau khi booking hết hạn/hủy hoặc đã thanh toán bằng cách khác, hệ thống **không lấy lại ghế hoặc phát hành vé**. PaymentAttempt chuyển `refund_required`, lưu mã giao dịch để chủ nhà xe/quản lý xem tại `/company/payment-issues` hoặc `/staff/payment-issues`, đối soát và hoàn tiền trên merchant MoMo. Ứng dụng không tự thực hiện chuyển/hoàn tiền thật. Hạn giữ ghế của ứng dụng không đồng nghĩa cổng MoMo đã vô hiệu liên kết thanh toán; khoản trả muộn được xử lý theo luồng đối soát trên.
-
-Tài liệu MoMo chính thức: [Thanh toán ví một lần](https://developers.momo.vn/v3/docs/payment/api/wallet/onetime/), [Thông báo IPN](https://developers.momo.vn/v3/docs/payment/api/result-handling/notification/), [Tài khoản và môi trường](https://developers.momo.vn/v3/docs/payment/onboarding/integration-process/).
-
-Kiểm thử tích hợp mới (fixture riêng, không thu tiền/gửi thư thật):
-
-```powershell
-cd backend
-$env:RUN_DB_TESTS='1'
-node --test tests/ticketing.integration.test.js
-Remove-Item Env:RUN_DB_TESTS
-```
-
-Test dùng SQL Server thật và giả lập cổng MoMo/SMTP: hết hạn/giải phóng ghế, bán tại quầy, đổi chuyến và chênh lệch, vô hiệu QR cũ, chống quét sai chuyến/quét trùng, chữ ký IPN, replay và thanh toán muộn, email lỗi/thử lại. Cần xác minh merchant production, IPN công khai và SMTP thật trước khi mở cho khách thanh toán thực tế.
-
-Hướng dẫn dành cho người chưa có merchant/tên miền/SMTP: [HUONG_DAN_MOMO_EMAIL.md](HUONG_DAN_MOMO_EMAIL.md). Kiểm tra cấu hình không in khóa và không thu tiền bằng `npm run integrations:check` trong backend.
-
 
 ### Tích hợp VNPAY (hiện hành)
 
