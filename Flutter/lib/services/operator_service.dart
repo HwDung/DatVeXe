@@ -3,21 +3,40 @@ import 'customer_service.dart';
 
 /// Mirrors operator.routes.js. companyId always comes from backend membership.
 class OperatorAccess {
-  const OperatorAccess(this.role, this.isActive);
+  const OperatorAccess(this.role, this.isActive, [this.permissions = const []]);
   final String role;
   final bool isActive;
-  factory OperatorAccess.from(Map<String, dynamic>? member) =>
-      OperatorAccess('${member?['role'] ?? ''}', member?['isActive'] == true);
-  bool get allowed => isActive && ['staff', 'manager', 'owner'].contains(role);
-  bool get manageEmployees => allowed && ['manager', 'owner'].contains(role);
-  bool get board => allowed && role == 'staff';
+  final List<String> permissions;
+  factory OperatorAccess.from(Map<String, dynamic>? member) {
+    final grants = member?['permissions'];
+    final rows = member?['roleDefinition']?['permissions'];
+    final keys = grants is List
+        ? grants
+        : rows is List
+        ? rows.map((r) => r['permission']?['key']).whereType<String>().toList()
+        : <String>[];
+    return OperatorAccess(
+      '${member?['role'] ?? ''}',
+      member?['isActive'] == true,
+      List<String>.from(keys),
+    );
+  }
+  bool has(String key) =>
+      isActive &&
+      permissions.contains('operator.access') &&
+      permissions.contains(key);
+  bool get allowed => isActive && permissions.contains('operator.access');
+  bool get work => has('operator.work');
+  bool get manageEmployees => has('operator.employees.manage');
+  bool get manageManagers => has('operator.employees.managers');
+  bool get board => has('operator.board');
   String get label =>
       const {
         'staff': 'Nhân viên',
         'manager': 'Quản lý',
         'owner': 'Chủ nhà xe',
       }[role] ??
-      'Chưa có quyền';
+      role;
 }
 
 class OperatorService {

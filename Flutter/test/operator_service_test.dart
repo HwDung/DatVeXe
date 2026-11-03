@@ -21,9 +21,22 @@ void main() {
     await server.close(force: true);
   });
   test('Staff/manager/owner capabilities match backend and unknown roles fail closed', () {
-    const staff = OperatorAccess('staff', true),
-        manager = OperatorAccess('manager', true),
-        owner = OperatorAccess('owner', true);
+    const staff = OperatorAccess('staff', true, [
+          'operator.access',
+          'operator.work',
+          'operator.board',
+        ]),
+        manager = OperatorAccess('manager', true, [
+          'operator.access',
+          'operator.work',
+          'operator.employees.manage',
+        ]),
+        owner = OperatorAccess('owner', true, [
+          'operator.access',
+          'operator.work',
+          'operator.employees.manage',
+          'operator.employees.managers',
+        ]);
     expect(staff.allowed, isTrue);
     expect(staff.manageEmployees, isFalse);
     expect(staff.board, isTrue);

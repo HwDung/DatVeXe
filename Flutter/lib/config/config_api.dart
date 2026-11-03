@@ -20,6 +20,7 @@ class ApiConfig {
 
   static String get baseURL => normalize(value('API_BASE_URL'));
   static String get appName => value('APP_NAME');
+  static String get heroImage => dotenv.env['HERO_IMAGE_URL']?.trim() ?? '';
   static Duration get connectTimeout =>
       Duration(seconds: positiveInt('CONNECT_TIMEOUT_SECONDS'));
   static Duration get requestTimeout =>

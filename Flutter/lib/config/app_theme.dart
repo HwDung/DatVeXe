@@ -10,6 +10,31 @@ final appTheme = ThemeData(
     secondary: navy,
   ),
   scaffoldBackgroundColor: const Color(0xFFF9FAFB),
+  cardTheme: CardThemeData(
+    color: Colors.white,
+    surfaceTintColor: Colors.transparent,
+    elevation: 0,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+      side: const BorderSide(color: Color(0xFFE5E7EB)),
+    ),
+  ),
+  drawerTheme: const DrawerThemeData(backgroundColor: Colors.white),
+  navigationBarTheme: NavigationBarThemeData(
+    backgroundColor: Colors.white,
+    indicatorColor: const Color(0xFFFEF2F2),
+    labelTextStyle: WidgetStateProperty.resolveWith(
+      (s) => TextStyle(
+        fontSize: 11,
+        color: s.contains(WidgetState.selected) ? red : navy,
+      ),
+    ),
+  ),
+  listTileTheme: const ListTileThemeData(
+    selectedColor: red,
+    selectedTileColor: Color(0xFFFEF2F2),
+  ),
+  dividerTheme: const DividerThemeData(color: Color(0xFFE5E7EB)),
   appBarTheme: const AppBarTheme(
     backgroundColor: Colors.white,
     foregroundColor: navy,

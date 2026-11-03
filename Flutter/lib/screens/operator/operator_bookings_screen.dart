@@ -1,3 +1,5 @@
+import '../../services/management_service.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../services/operator_service.dart';
@@ -7,8 +9,12 @@ import 'operator_widgets.dart';
 import 'operator_counter_screen.dart';
 
 class OperatorBookingsScreen extends StatefulWidget {
-  const OperatorBookingsScreen({super.key, this.customers = false});
-  final bool customers;
+  const OperatorBookingsScreen({
+    super.key,
+    this.customers = false,
+    this.admin = false,
+  });
+  final bool customers, admin;
   @override
   State<OperatorBookingsScreen> createState() => _OperatorBookingsScreenState();
 }
@@ -47,7 +53,15 @@ class _OperatorBookingsScreenState extends State<OperatorBookingsScreen> {
         initial: const {'method': 'cash'},
         money: true,
         save: (v) async {
-          await operatorApi.payment('${b['id']}', paymentBody(v));
+          if (widget.admin) {
+            await management.json.object(
+              '/admin/bookings/${b['id']}/payment',
+              method: 'POST',
+              body: paymentBody(v),
+            );
+          } else {
+            await operatorApi.payment('${b['id']}', paymentBody(v));
+          }
         },
       ),
     );
@@ -62,7 +76,15 @@ class _OperatorBookingsScreenState extends State<OperatorBookingsScreen> {
     );
     if (yes != true) return;
     try {
-      await operatorApi.status('${b['id']}', target);
+      if (widget.admin) {
+        await management.json.object(
+          '/admin/bookings/${b['id']}/status',
+          method: 'PATCH',
+          body: {'status': target},
+        );
+      } else {
+        await operatorApi.status('${b['id']}', target);
+      }
       if (mounted) setState(() => revision++);
     } catch (e) {
       if (mounted) notify(context, e);
@@ -159,15 +181,25 @@ class _OperatorBookingsScreenState extends State<OperatorBookingsScreen> {
         ),
         _BookingRows(
           key: ValueKey(revision),
-          load: () => operatorApi.bookings(
-            customers: widget.customers,
-            query: {
-              'search': search.text.trim(),
-              'status': status,
-              'paymentStatus': payment,
-              'date': date,
-            },
-          ),
+          load: () => widget.admin
+              ? management.list(
+                  '/admin/bookings',
+                  query: {
+                    'search': search.text.trim(),
+                    'status': status,
+                    'paymentStatus': payment,
+                    'date': date,
+                  },
+                )
+              : operatorApi.bookings(
+                  customers: widget.customers,
+                  query: {
+                    'search': search.text.trim(),
+                    'status': status,
+                    'paymentStatus': payment,
+                    'date': date,
+                  },
+                ),
           item: (b) => panel(
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -186,7 +218,8 @@ class _OperatorBookingsScreenState extends State<OperatorBookingsScreen> {
                 Wrap(
                   spacing: 8,
                   children: [
-                    if (['pending', 'confirmed'].contains(b['status']))
+                    if (!widget.admin &&
+                        ['pending', 'confirmed'].contains(b['status']))
                       TextButton(
                         onPressed: () => editContact(b),
                         child: const Text('Sửa liên hệ'),
@@ -214,7 +247,8 @@ class _OperatorBookingsScreenState extends State<OperatorBookingsScreen> {
                           onPressed: () => change(b, 'cancelled'),
                           child: const Text('Hủy vé'),
                         ),
-                      if (b['status'] == 'confirmed' &&
+                      if (!widget.admin &&
+                          b['status'] == 'confirmed' &&
                           b['paymentStatus'] == 'paid')
                         TextButton(
                           onPressed: () async {

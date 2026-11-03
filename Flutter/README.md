@@ -4,7 +4,7 @@ Frontend đặt vé xe sử dụng API của `C:\QLDA\DatVeXe\backend`, UX/UI t�
 
 ## Cấu hình duy nhất: .env
 
-Chỉnh file `C:\QLDA\Flutter\.env`:
+Chỉnh file `C:\QLDA\DatVeXe\Flutter\.env`:
 
 ```dotenv
 API_BASE_URL=http://10.0.2.2:3000/api
@@ -32,7 +32,7 @@ Các đường dẫn tương đối như `/trips/search` được ghép vào API
 
 1. Khởi động SQL Server và backend theo README của `DatVeXe`.
 2. Trong `C:\QLDA\DatVeXe\backend`, chạy `npm run dev`.
-3. Chỉnh `.env`, sau đó trong `C:\QLDA\Flutter` chạy:
+3. Chỉnh `.env`, sau đó trong `C:\QLDA\DatVeXe\Flutter` chạy:
 
 ```powershell
 flutter pub get
@@ -67,7 +67,7 @@ Tìm chuyến, sắp xếp theo giờ/giá/đánh giá, chọn nhiều ghế the
 
 Dữ liệu lấy trực tiếp từ backend. Đặt vé yêu cầu đăng nhập. Tiền mặt/chuyển khoản cần nhà xe xác nhận. VNPAY mở trình duyệt Android; khi quay về bấm cập nhật trạng thái. Backend cần cấu hình VNPAY theo hướng dẫn trong DatVeXe. Không tự đánh dấu đã trả tiền. Phiên chỉ lưu trong bộ nhớ, đóng ứng dụng cần đăng nhập lại.
 
-Hiện hỗ trợ Android; chưa cấu hình iOS/Web. Đã bổ sung khu vực nhân viên/quản lý trên Flutter; trang admin và quản lý xe/chuyến/doanh thu riêng cho chủ nhà xe vẫn dùng web. HTTP được cho phép để kết nối backend local; khi phát hành dùng HTTPS và cấu hình signing riêng. Chưa xác minh đặt vé/thanh toán xuyên suốt với SQL Server thật vì backend chưa chạy trong các lần kiểm tra trước.
+Hiện hỗ trợ Android; chưa cấu hình iOS/Web. Đã bổ sung khu vực nhân viên/quản lý trên Flutter; đã có trang admin và quản lý xe/chuyến/doanh thu riêng cho chủ nhà xe theo quyền API. HTTP được cho phép để kết nối backend local; khi phát hành dùng HTTPS và cấu hình signing riêng. Chưa xác minh đặt vé/thanh toán xuyên suốt với SQL Server thật vì backend chưa chạy trong các lần kiểm tra trước.
 
 ## Đồng bộ với web
 
@@ -98,3 +98,8 @@ flutter test tool/check_api_test.dart
 Tài khoản staff/manager có quyền nhà xe sẽ có tab **Làm việc** sau đăng nhập: quản lý vé/khách hàng, thu tiền, bán và đổi vé tại quầy, QR, email vé. Quản lý có thêm trang nhân viên và đối soát thanh toán. Camera chỉ xin quyền khi mở quét QR; có thể dán dữ liệu QR khi không dùng camera.
 
 Xem [hướng dẫn trang và phân quyền](docs/OPERATOR_GUIDE.md). Cần cài APK mới để có các trang này.
+
+## Đồng bộ Develops
+
+Xem [báo cáo đồng bộ](docs/DEVELOPS_SYNC.md) để biết phạm vi, phiên bản nguồn và kiểm thử mới nhất.
+
