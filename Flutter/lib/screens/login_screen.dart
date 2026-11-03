@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../config/app_theme.dart';
 import '../services/api_service.dart';
 import '../widgets/app_widgets.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -108,6 +109,32 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 validator: validatePassword,
               ),
+              if (!register)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: busy
+                        ? null
+                        : () async {
+                            final changed = await open<bool>(
+                              context,
+                              ForgotPasswordScreen(
+                                initialEmail: email.text.trim(),
+                              ),
+                            );
+                            if (changed == true && mounted) {
+                              password.clear();
+                              if (context.mounted) {
+                                notify(
+                                  context,
+                                  'Đã đổi mật khẩu. Vui lòng đăng nhập bằng mật khẩu mới.',
+                                );
+                              }
+                            }
+                          },
+                    child: const Text('Quên mật khẩu?'),
+                  ),
+                ),
               const SizedBox(height: 24),
               FilledButton(
                 onPressed: busy ? null : submit,

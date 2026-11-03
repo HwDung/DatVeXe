@@ -75,6 +75,18 @@ npm run dev
 ```
 API server chạy tại: `http://localhost:3000`
 
+### Swagger / OpenAPI
+
+Sau khi chạy backend bằng `npm run dev` trong thư mục `backend`:
+
+- Swagger UI: http://localhost:3000/api-docs/
+- OpenAPI JSON: http://localhost:3000/api-docs.json
+- Với ngrok, dùng cùng đường dẫn `/api-docs/` trên tên miền API (không thêm `/api`).
+
+Gọi `POST /api/auth/login`, sao chép `accessToken`, rồi bấm **Authorize** và nhập token để thử API cần đăng nhập. Refresh/logout sử dụng cookie do API đặt. Thao tác **Try it out** gọi API thật và có thể thay đổi dữ liệu.
+
+Tài liệu hiện gồm health, auth, tìm chuyến và booking chính; chưa bao gồm admin, operator, thanh toán và hỗ trợ. Cấu hình nằm ở `backend/src/config/openapi.js`; cập nhật file này khi API thay đổi.
+
 ### 4. Khởi chạy Frontend
 Mở một terminal mới:
 ```bash

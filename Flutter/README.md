@@ -1,5 +1,19 @@
 # Rightway — Flutter Android
 
+## Khôi phục mật khẩu và tài khoản cá nhân
+
+Trong màn Đăng nhập, chọn **Quên mật khẩu?**, nhập email đăng ký, rồi nhập mã 8 chữ số và mật khẩu mới. Trong trang Tài khoản cũng có nút **Đặt lại mật khẩu qua email**. Mã dùng một lần, hết hạn sau 10 phút, tối đa 5 lần nhập; yêu cầu mã mới cách nhau ít nhất 60 giây. Đổi mật khẩu thành công sẽ kết thúc mọi phiên đăng nhập cũ.
+
+Backend cần áp dụng migration `20261103000000_password_reset` và chạy `npx prisma generate` trước khi khởi động lại. Nếu tài khoản database của ứng dụng không có quyền tạo bảng, quản trị viên database cần áp dụng migration. Cấu hình SMTP tại `backend/.env`: `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`. Không đặt thông tin SMTP trong Flutter. Khi chưa cấu hình gửi email, API trả lỗi `EMAIL_UNAVAILABLE`.
+
+Trang Tài khoản hiển thị họ tên, email đăng nhập, loại tài khoản và nhà xe (nếu có), với nhãn và giá trị riêng. Không hiển thị URL máy chủ hoặc hướng dẫn cấu hình kỹ thuật trong app. Chưa có tính năng sửa hồ sơ.
+
+## Chat trực tiếp với nhân viên
+
+Khách hàng và nhân viên nhận cập nhật hội thoại qua WebSocket `/api/support/socket`, không cần bấm tải lại. Flutter dùng WebSocket có sẵn trong Dart; backend dùng `ws`. Kết nối đầu tiên gửi JSON `{ "token": "<accessToken>", "staff": false }` (`true` cho nhân viên), sau đó nhận `support.ready` hoặc `support.updated` cùng `conversationId`. Tin nhắn vẫn được gửi/lưu qua các API HTTP hiện có. Khi kết nối lại, app tải trạng thái mới nhất để lấy các tin bị lỡ; rời màn hình hoặc đăng xuất sẽ đóng socket.
+
+Proxy cần chuyển tiếp WebSocket với `proxy_http_version 1.1`, `Upgrade` và `Connection: upgrade`. Backend hiện phát sự kiện trong một tiến trình; cần pub/sub chung khi triển khai nhiều tiến trình API. Frontend web cũng nhận sự kiện socket, giữ polling hiện có làm dự phòng.
+
 Frontend đặt vé xe sử dụng API của `C:\QLDA\DatVeXe\backend`, UX/UI từ frontend React Rightway và cấu trúc Flutter từ `C:\LTDD\NguyenXuanPhu_KTGK_LTDD\FrontEnd`.
 
 ## Cấu hình duy nhất: .env
