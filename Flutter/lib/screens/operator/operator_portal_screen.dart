@@ -4,6 +4,10 @@ import '../../services/api_service.dart';
 import '../../services/operator_service.dart';
 import '../../widgets/app_widgets.dart';
 import '../../widgets/remote.dart';
+import '../support_screen.dart';
+import '../management/catalog.dart';
+import '../management/resource_screen.dart';
+import '../management/insights_screens.dart';
 import 'operator_bookings_screen.dart';
 import 'operator_counter_screen.dart';
 import 'operator_management_screens.dart';
@@ -45,8 +49,8 @@ class _OperatorPortalScreenState extends State<OperatorPortalScreen> {
       Remote(
         key: ValueKey(revision),
         load: widget.loadMembership ?? operatorApi.me,
-        builder: (data) {
-          final member = Map<String, dynamic>.from(data);
+        builder: (raw) {
+          final member = Map<String, dynamic>.from(raw);
           final access = OperatorAccess.from(member);
           if (!access.allowed) {
             return const Text('Tài khoản chưa có quyền làm việc tại nhà xe.');
@@ -65,65 +69,99 @@ class _OperatorPortalScreenState extends State<OperatorPortalScreen> {
                   ],
                 ),
               ),
-              tile(
-                'Quản lý vé',
-                'Tìm, duyệt, hủy, hoàn thành và ghi nhận thu tiền',
-                Icons.confirmation_number_outlined,
-                const OperatorBookingsScreen(),
-              ),
-              tile(
-                'Thông tin khách hàng',
-                'Tìm vé và cập nhật liên hệ hành khách',
-                Icons.people_outline,
-                const OperatorBookingsScreen(customers: true),
-              ),
-              tile(
-                'Bán vé tại quầy',
-                'Chọn chuyến, chọn ghế, thu tiền và xuất QR',
-                Icons.point_of_sale,
-                const OperatorCounterScreen(),
-              ),
-              tile(
-                'Đổi ghế / chuyến',
-                'Chọn vé đã thanh toán trong Quản lý vé để báo giá và đổi',
-                Icons.swap_horiz,
-                const OperatorBookingsScreen(),
-              ),
-              tile(
-                'Email vé',
-                'Trạng thái gửi email và yêu cầu gửi lại',
-                Icons.email_outlined,
-                const OperatorEmailScreen(),
-              ),
-              tile(
-                'Quét QR xem vé',
-                'Kiểm tra vé thuộc nhà xe',
-                Icons.qr_code_scanner,
-                const OperatorQrScreen(),
-              ),
+              if (access.has('operator.fleet.manage'))
+                tile(
+                  'Quản lý xe',
+                  'Thêm, sửa và xóa xe trong nhà xe',
+                  Icons.directions_bus_outlined,
+                  ResourceScreen(spec: catalog('buses', owner: true)),
+                ),
+              if (access.has('operator.trips.manage'))
+                tile(
+                  'Quản lý chuyến',
+                  'Tuyến, xe, giá và lịch khởi hành',
+                  Icons.route,
+                  ResourceScreen(spec: catalog('trips', owner: true)),
+                ),
+              if (access.work) ...[
+                tile(
+                  'Quản lý vé',
+                  'Tìm, duyệt, hủy, hoàn thành và ghi nhận thu tiền',
+                  Icons.confirmation_number_outlined,
+                  const OperatorBookingsScreen(),
+                ),
+                tile(
+                  'Thông tin khách hàng',
+                  'Liên hệ trên vé đang hoạt động',
+                  Icons.people_outline,
+                  const OperatorBookingsScreen(customers: true),
+                ),
+                tile(
+                  'Bán vé tại quầy',
+                  'Chọn ghế, thu tiền và xuất QR',
+                  Icons.point_of_sale,
+                  const OperatorCounterScreen(),
+                ),
+                tile(
+                  'Đổi ghế / chuyến',
+                  'Chọn vé đã thanh toán để báo giá và đổi',
+                  Icons.swap_horiz,
+                  const OperatorBookingsScreen(),
+                ),
+                tile(
+                  'Email vé',
+                  'Trạng thái gửi và yêu cầu gửi lại',
+                  Icons.email_outlined,
+                  const OperatorEmailScreen(),
+                ),
+                tile(
+                  'Quét QR xem vé',
+                  'Kiểm tra vé thuộc nhà xe',
+                  Icons.qr_code_scanner,
+                  const OperatorQrScreen(),
+                ),
+              ],
+              if (access.has('operator.support'))
+                tile(
+                  'Trả lời khách hàng',
+                  'Hội thoại hỗ trợ của nhà xe',
+                  Icons.support_agent,
+                  const SupportScreen(staff: true),
+                ),
               if (access.board)
                 tile(
                   'Xác nhận lên xe',
-                  'Quét QR đúng chuyến và ngày khởi hành',
+                  'Đúng chuyến và ngày khởi hành',
                   Icons.how_to_reg,
                   const OperatorQrScreen(board: true),
                 ),
-              if (access.manageEmployees) ...[
+              if (access.manageEmployees)
                 tile(
                   'Quản lý nhân viên',
-                  access.role == 'manager'
-                      ? 'Thêm, sửa và khóa/mở nhân viên thường'
-                      : 'Thêm và phân quyền quản lý/nhân viên',
+                  access.manageManagers
+                      ? 'Cấp quyền quản lý/nhân viên'
+                      : 'Chỉ thêm và sửa nhân viên thường',
                   Icons.manage_accounts,
                   OperatorEmployeesScreen(access: access),
                 ),
+              if (access.has('operator.payment-issues.read'))
                 tile(
                   'Đối soát thanh toán',
-                  'Các khoản cần kiểm tra và hoàn tiền',
+                  'Các khoản cần hoàn/đối soát',
                   Icons.account_balance_outlined,
                   const OperatorPaymentIssuesScreen(),
                 ),
-              ],
+              if (access.has('operator.revenue.read'))
+                tile(
+                  'Thống kê doanh thu',
+                  'Theo biên nhận và khoản điều chỉnh',
+                  Icons.analytics_outlined,
+                  const MetricsScreen(
+                    title: 'Doanh thu nhà xe',
+                    path: '/operator/revenue',
+                    filter: true,
+                  ),
+                ),
             ],
           );
         },

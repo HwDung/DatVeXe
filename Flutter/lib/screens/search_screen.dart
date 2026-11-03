@@ -8,7 +8,7 @@ import '../widgets/trip_filters.dart';
 import '../utils/formatters.dart';
 import '../widgets/app_widgets.dart';
 import '../widgets/remote.dart';
-import 'seat_selection_screen.dart';
+import '../utils/booking_navigation.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({
@@ -16,8 +16,10 @@ class SearchScreen extends StatefulWidget {
     required this.origin,
     required this.destination,
     required this.date,
+    this.passengers = 1,
   });
   final String origin, destination, date;
+  final int passengers;
   @override
   State<SearchScreen> createState() => _SearchScreenState();
 }
@@ -32,7 +34,7 @@ class _SearchScreenState extends State<SearchScreen> {
       padding: const EdgeInsets.all(16),
       children: [
         heading('${widget.origin} → ${widget.destination}'),
-        Text(widget.date),
+        Text('${tripDateLabel(widget.date)} • ${widget.passengers} hành khách'),
         const SizedBox(height: 12),
         OutlinedButton.icon(
           onPressed: () async {
@@ -91,6 +93,19 @@ class _SearchScreenState extends State<SearchScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (t['bus']?['image'] != null)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            '${t['bus']['image']}',
+                            height: 140,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, e, st) => const SizedBox.shrink(),
+                          ),
+                        ),
+                      if (t['isDemo'] == true)
+                        const Chip(label: Text('Dữ liệu minh họa')),
                       Text(
                         '${t['company']?['name'] ?? 'Nhà xe'}',
                         style: const TextStyle(
@@ -111,7 +126,11 @@ class _SearchScreenState extends State<SearchScreen> {
                       TextButton(
                         onPressed: () => open(
                           context,
-                          TripDetailScreen(id: '${t['id']}', date: widget.date),
+                          TripDetailScreen(
+                            id: '${t['id']}',
+                            date: widget.date,
+                            passengers: widget.passengers,
+                          ),
                         ),
                         child: const Text('Chi tiết chuyến'),
                       ),
@@ -129,14 +148,15 @@ class _SearchScreenState extends State<SearchScreen> {
                             ),
                           ),
                           FilledButton(
-                            onPressed: (t['seatsAvailable'] as num? ?? 0) <= 0
+                            onPressed:
+                                (t['seatsAvailable'] as num? ?? 0) <
+                                    widget.passengers
                                 ? null
-                                : () => open(
+                                : () => chooseCustomerSeats(
                                     context,
-                                    SeatSelectionScreen(
-                                      trip: Map<String, dynamic>.from(t),
-                                      date: widget.date,
-                                    ),
+                                    Map<String, dynamic>.from(t),
+                                    widget.date,
+                                    widget.passengers,
                                   ),
                             child: const Text('Chọn chỗ'),
                           ),

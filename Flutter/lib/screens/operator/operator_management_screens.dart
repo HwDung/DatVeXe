@@ -1,3 +1,5 @@
+import '../../services/management_service.dart';
+
 import 'package:flutter/material.dart';
 
 import '../../services/operator_service.dart';
@@ -26,7 +28,7 @@ class _OperatorEmployeesScreenState extends State<OperatorEmployeesScreen> {
             const OpField('email', 'Email', email: true, max: 254),
             const OpField('password', 'Mật khẩu', secret: true, max: 72),
           ],
-          if (widget.access.role == 'owner')
+          if (widget.access.manageManagers)
             const OpField(
               'role',
               'Vai trò',
@@ -41,7 +43,7 @@ class _OperatorEmployeesScreenState extends State<OperatorEmployeesScreen> {
           if (member == null) {
             await operatorApi.createEmployee({
               ...v,
-              if (widget.access.role != 'owner') 'role': 'staff',
+              if (!widget.access.manageManagers) 'role': 'staff',
             });
           } else {
             await operatorApi.updateEmployee('${member['id']}', v);
@@ -161,11 +163,14 @@ class OperatorEmailScreen extends StatelessWidget {
 }
 
 class OperatorPaymentIssuesScreen extends StatelessWidget {
-  const OperatorPaymentIssuesScreen({super.key});
+  const OperatorPaymentIssuesScreen({super.key, this.admin = false});
+  final bool admin;
   @override
   Widget build(BuildContext context) => OperatorList(
     title: 'Đối soát thanh toán',
-    load: operatorApi.paymentIssues,
+    load: admin
+        ? () => management.list('/admin/payment-issues')
+        : operatorApi.paymentIssues,
     item: (c, a, reload) => panel(
       Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -42,8 +42,14 @@ class ApiService {
     Map<String, dynamic>? query,
     Map<String, dynamic>? body,
     bool retry = true,
+    bool binary = false,
+    Uint8List? uploadBytes,
+    String? fileName,
   }) async {
     try {
+      if (uploadBytes != null && uploadBytes.length > 5 * 1024 * 1024) {
+        throw const ApiException('File Excel tối đa 5 MB.');
+      }
       final parameters = <String, String>{};
       for (final entry in (query ?? <String, dynamic>{}).entries) {
         final value = entry.value;
@@ -68,7 +74,28 @@ class ApiService {
       if (path.startsWith('/auth/') && _refreshCookie != null) {
         req.headers.set('Cookie', _refreshCookie!);
       }
-      if (body != null) req.write(jsonEncode(body));
+      if (uploadBytes != null) {
+        final boundary = 'rightway-${DateTime.now().microsecondsSinceEpoch}';
+        final crlf = String.fromCharCodes([13, 10]);
+        final safe = String.fromCharCodes(
+          (fileName ?? 'trips.xlsx').codeUnits.map(
+            (c) => [34, 13, 10, 47, 92].contains(c) ? 95 : c,
+          ),
+        );
+        req.headers.set(
+          HttpHeaders.contentTypeHeader,
+          'multipart/form-data; boundary=$boundary',
+        );
+        req.add(
+          utf8.encode(
+            '--$boundary${crlf}Content-Disposition: form-data; name="file"; filename="$safe"${crlf}Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet$crlf$crlf',
+          ),
+        );
+        req.add(uploadBytes);
+        req.add(utf8.encode('$crlf--$boundary--$crlf'));
+      } else if (body != null) {
+        req.write(jsonEncode(body));
+      }
       final res = await req.close().timeout(ApiConfig.requestTimeout);
       for (final cookie in res.cookies) {
         if (cookie.name == 'refreshToken') {
@@ -77,10 +104,10 @@ class ApiService {
               : '${cookie.name}=${cookie.value}';
         }
       }
-      final raw = await utf8.decoder
-          .bind(res)
-          .join()
+      final responseBytes = await consolidateHttpClientResponseBytes(res)
           .timeout(ApiConfig.requestTimeout);
+      if (binary && res.statusCode < 400) return responseBytes;
+      final raw = utf8.decode(responseBytes, allowMalformed: true);
       dynamic data;
       try {
         data = raw.isEmpty ? null : jsonDecode(raw);
@@ -112,6 +139,9 @@ class ApiService {
           query: query,
           body: body,
           retry: false,
+          binary: binary,
+          uploadBytes: uploadBytes,
+          fileName: fileName,
         );
       }
       if (res.statusCode >= 400) {
@@ -172,6 +202,15 @@ class ApiService {
         body: body,
       ),
     );
+  }
+
+  Future<void> refreshProfile() async {
+    final data = await request('/auth/me');
+    if (data is! Map || data['user'] is! Map) {
+      throw const ApiException('Thông tin tài khoản không hợp lệ.');
+    }
+    user = Map<String, dynamic>.from(data['user']);
+    sessionChanges.value++;
   }
 
   Future<void> logout() async {

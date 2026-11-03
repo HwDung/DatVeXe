@@ -22,6 +22,16 @@ void main() {
             loadMembership: () async => {
               'role': role,
               'isActive': active,
+              'permissions': [
+                'operator.access',
+                'operator.work',
+                'operator.support',
+                if (role == 'staff') 'operator.board',
+                if (role == 'manager') ...[
+                  'operator.employees.manage',
+                  'operator.payment-issues.read',
+                ],
+              ],
               'company': {'name': 'Nhà xe kiểm thử'},
             },
           ),

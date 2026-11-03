@@ -1,3 +1,5 @@
+import '../widgets/booking_steps.dart';
+import '../utils/app_access.dart';
 import '../services/customer_service.dart';
 
 import 'package:flutter/material.dart';
@@ -15,9 +17,11 @@ class SeatSelectionScreen extends StatefulWidget {
     super.key,
     required this.trip,
     required this.date,
+    this.passengers = 1,
   });
   final Map<String, dynamic> trip;
   final String date;
+  final int passengers;
   @override
   State<SeatSelectionScreen> createState() => _SeatSelectionScreenState();
 }
@@ -36,10 +40,7 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
         ),
         Text('${widget.date} • ${widget.trip['departureTime']}'),
         const SizedBox(height: 18),
-        const Text(
-          '1. Chọn ghế   →   2. Hành khách   →   3. Đặt vé',
-          style: TextStyle(color: navy),
-        ),
+        const BookingSteps(current: 1),
         const SizedBox(height: 16),
         const Text('Trắng: còn trống • Đỏ: đang chọn • Xám: đã giữ/đặt'),
         Remote(
@@ -73,6 +74,10 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
                       ),
                       onPressed: available
                           ? () => setState(() {
+                              if (!selected.contains(code) &&
+                                  selected.length >= 40) {
+                                return;
+                              }
                               selected.contains(code)
                                   ? selected.remove(code)
                                   : selected.add(code);
@@ -95,10 +100,10 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
               : () async {
                   if (api.user == null) {
                     await open(context, const LoginScreen());
-                    if (!mounted || api.user == null) return;
+                    if (!mounted || !AppAccess(api.user).customer) return;
                   }
                   if (!context.mounted) return;
-                  await open(
+                  final result = await open(
                     context,
                     PassengerInfoScreen(
                       trip: widget.trip,
@@ -106,7 +111,13 @@ class _SeatSelectionScreenState extends State<SeatSelectionScreen> {
                       seats: selected.toList(),
                     ),
                   );
-                  if (mounted) {
+                  if (context.mounted) {
+                    if (result == 'seatConflict') {
+                      notify(
+                        context,
+                        'Ghế đã thay đổi. Vui lòng chọn lại ghế trống.',
+                      );
+                    }
                     setState(() {
                       selected.clear();
                       revision++;
