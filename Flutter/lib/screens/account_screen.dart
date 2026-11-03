@@ -4,11 +4,11 @@ import 'operator/operator_portal_screen.dart';
 import 'package:flutter/material.dart';
 
 import '../config/app_theme.dart';
+import '../utils/app_access.dart';
 import '../services/api_service.dart';
 import '../widgets/app_widgets.dart';
 import 'login_screen.dart';
 import 'forgot_password_screen.dart';
-import '../utils/app_access.dart';
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});

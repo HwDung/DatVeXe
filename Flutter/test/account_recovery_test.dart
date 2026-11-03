@@ -185,9 +185,12 @@ void main() {
         expect(find.text('Họ và tên'), findsOneWidget);
         expect(find.text('Nguyễn Thị Minh Anh'), findsOneWidget);
         expect(find.text('Email đăng nhập'), findsOneWidget);
+        expect(find.text('Loại tài khoản'), findsOneWidget);
         expect(find.text('Khách hàng'), findsOneWidget);
-      expect(find.text('Thông tin kết nối'), findsNothing);
-      expect(find.text(api.baseUrl), findsNothing);
+        expect(find.text('Bảo mật tài khoản'), findsOneWidget);
+        expect(find.text('Đặt lại mật khẩu qua email'), findsOneWidget);
+        expect(find.text('Thông tin kết nối'), findsNothing);
+        expect(find.text(api.baseUrl), findsNothing);
         expect(tester.takeException(), isNull);
         await capture(tester, key, 'account-${width.toInt()}');
       }

@@ -19,6 +19,8 @@ module.exports = {
   components: { securitySchemes: { bearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" } } },
   paths: {
     "/health": { get: { tags: ["Health"], summary: "Check API availability", responses: ok } },
+    "/api/operator/trip-board": { get: { tags: ["Operator"], summary: "Company trip schedule for staff", security: bearer, description: "Requires an active company membership with operator.access and operator.work. Company is always taken from the authenticated membership.", parameters: [query("date", date, true)], responses: ok } },
+    "/api/operator/trip-board/{id}/seats": { get: { tags: ["Operator"], summary: "Company seat map with booking contact details", security: bearer, description: "Requires operator.work. Rejects trips belonging to another company before reading any booking contact data.", parameters: [id, query("date", date, true)], responses: { ...ok, 404: { description: "Trip is not in the caller's company" } } } },
     "/api/auth/register": { post: {
       tags: ["Auth"], summary: "Register a customer account",
       requestBody: jsonBody({ ...credentials, properties: {

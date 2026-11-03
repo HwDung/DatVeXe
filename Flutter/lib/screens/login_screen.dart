@@ -36,7 +36,9 @@ class _LoginScreenState extends State<LoginScreen> {
         'password': password.text,
         if (register) 'fullName': name.text.trim(),
       }, register: register);
-      if (mounted) Navigator.pop(context, true);
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.pop(context, true);
+      }
     } catch (e) {
       if (mounted) notify(context, e);
     } finally {

@@ -174,6 +174,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen>
     final yes = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
+        scrollable: true,
         title: const Text('Hủy vé này?'),
         content: const Text(
           'Ghế sẽ được giải phóng. Khoản hoàn tiền cần nhà xe xử lý theo chính sách.',

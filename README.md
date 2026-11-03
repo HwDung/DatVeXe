@@ -77,6 +77,8 @@ API server chạy tại: `http://localhost:3000`
 
 ### Swagger / OpenAPI
 
+Các cấu hình tích hợp dùng chung (VNPAY, SMTP, nhà cung cấp AI và email hỗ trợ) cần được cập nhật đồng thời trong `backend/.env` local và `/opt/datvexe/backend/.env` trên VPS, rồi khởi động lại backend để áp dụng. Giữ riêng `DATABASE_URL`, `PORT`, `CORS_ORIGIN`, khóa JWT và QR của từng môi trường; không chép đè toàn bộ file hoặc đưa bí mật vào Git. URL IPN VNPAY phải trỏ về backend xử lý đúng database của đơn thanh toán; một tunnel vào local không thay thế callback cho đơn trên VPS.
+
 Sau khi chạy backend bằng `npm run dev` trong thư mục `backend`:
 
 - Swagger UI: http://localhost:3000/api-docs/

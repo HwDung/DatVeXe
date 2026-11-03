@@ -1,12 +1,22 @@
 # Rightway — Flutter Android
 
+## Chuyến xe dành cho nhân viên
+
+Tài khoản staff có quyền `operator.access` và `operator.work` sẽ thấy **Chuyến xe của nhà xe** trong khu vực làm việc. Chọn ngày để xem lịch, mở sơ đồ ghế rồi chọn ghế đã đặt để xem mã vé, tên khách, điện thoại và trạng thái thanh toán. API `/operator/trip-board` và `/operator/trip-board/:id/seats` luôn lấy nhà xe từ quyền đăng nhập, không nhận `companyId` từ app.
+
+Đã bỏ mục **Quét QR xem vé**; QR trên vé và **Xác nhận lên xe** vẫn giữ. Các thẻ dùng chung chiều rộng và khoảng cách; hộp thoại giới hạn chiều rộng, có thể cuộn khi nội dung dài hoặc bàn phím mở. Theo yêu cầu, không tích hợp Firebase/thông báo đẩy trong bản này.
+
+Ứng dụng mở màn hình đăng nhập trước. Sau khi đăng nhập hoặc đăng ký thành công, app chuyển vào khu vực tương ứng với quyền tài khoản. Khi đăng xuất hoặc phiên kết thúc, màn hình chính yêu cầu đăng nhập lại.
+
 ## Khôi phục mật khẩu và tài khoản cá nhân
 
 Trong màn Đăng nhập, chọn **Quên mật khẩu?**, nhập email đăng ký, rồi nhập mã 8 chữ số và mật khẩu mới. Trong trang Tài khoản cũng có nút **Đặt lại mật khẩu qua email**. Mã dùng một lần, hết hạn sau 10 phút, tối đa 5 lần nhập; yêu cầu mã mới cách nhau ít nhất 60 giây. Đổi mật khẩu thành công sẽ kết thúc mọi phiên đăng nhập cũ.
 
 Backend cần áp dụng migration `20261103000000_password_reset` và chạy `npx prisma generate` trước khi khởi động lại. Nếu tài khoản database của ứng dụng không có quyền tạo bảng, quản trị viên database cần áp dụng migration. Cấu hình SMTP tại `backend/.env`: `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`. Không đặt thông tin SMTP trong Flutter. Khi chưa cấu hình gửi email, API trả lỗi `EMAIL_UNAVAILABLE`.
 
-Trang Tài khoản hiển thị họ tên, email đăng nhập, loại tài khoản và nhà xe (nếu có), với nhãn và giá trị riêng. Không hiển thị URL máy chủ hoặc hướng dẫn cấu hình kỹ thuật trong app. Chưa có tính năng sửa hồ sơ.
+Trang Tài khoản hiển thị ảnh đại diện mặc định, họ tên, email đăng nhập, loại tài khoản và nhà xe (nếu có), cùng phần bảo mật, đặt lại mật khẩu và đăng xuất. Chỉ bỏ mục kết nối máy chủ và URL cấu hình. Chưa có tính năng sửa hồ sơ.
+
+Kết quả tìm vé chỉ hiển thị các chuyến đang mở bán và chưa khởi hành theo giờ Việt Nam; admin vẫn có thể thấy các lịch đã qua giờ chạy. Có thể bấm **Đổi ngày đi** ngay trên màn kết quả; khi hôm nay hết chuyến, bấm **Xem chuyến ngày mai** để giữ nguyên tuyến và tìm ngày tiếp theo.
 
 ## Chat trực tiếp với nhân viên
 
