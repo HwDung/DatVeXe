@@ -91,12 +91,18 @@ class _SupportScreenState extends State<SupportScreen>
             children: [
               if ((data as List).isEmpty)
                 panel(const Text('Chưa có hội thoại.')),
-              ...data.map<Widget>(
-                (c) => panel(
+              ...data.map<Widget>((c) {
+                String? name;
+                if (widget.staff) {
+                  name = c['customer']?['fullName'];
+                } else {
+                  name = c['company']?['name'];
+                }
+                name = name?.trim();
+                final fallback = widget.staff ? 'Khách hàng' : 'Nhà xe';
+                return panel(
                   ListTile(
-                    title: Text(
-                      '${c['company']?['name'] ?? c['customer']?['fullName'] ?? 'Hội thoại'}',
-                    ),
+                    title: Text(name == null || name.isEmpty ? fallback : name),
                     subtitle: Text(
                       '${c['status'] == 'open' ? 'Đang mở' : 'Đã đóng'} • ${(c['messages'] as List?)?.firstOrNull?['content'] ?? ''}',
                     ),
@@ -113,8 +119,8 @@ class _SupportScreenState extends State<SupportScreen>
                       if (mounted) setState(() => revision++);
                     },
                   ),
-                ),
-              ),
+                );
+              }),
             ],
           ),
         ),

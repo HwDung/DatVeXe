@@ -16,6 +16,7 @@ class LiveSupport extends SupportService {
   ];
   String status = 'open';
   int loads = 0;
+  final customerNames = ['Nguyễn Văn An'];
   @override
   Stream<String?> updates(bool staff) => events.stream;
   @override
@@ -26,12 +27,14 @@ class LiveSupport extends SupportService {
 
   @override
   Future<List<dynamic>> conversations(bool staff) async => [
-    {
-      'id': 'c1',
-      'company': {'name': 'Rightway'},
-      'status': status,
-      'messages': [messages.last],
-    },
+    for (var index = 0; index < customerNames.length; index++)
+      {
+        'id': 'c${index + 1}',
+        'customer': {'fullName': customerNames[index]},
+        'company': {'name': 'Rightway'},
+        'status': status,
+        'messages': [messages.last],
+      },
   ];
 }
 
@@ -80,6 +83,44 @@ void main() {
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       expect(service.events.hasListener, false);
+    },
+  );
+  testWidgets(
+    'Staff sees each conversation customer rather than the repeated company or logged-in staff name',
+    (tester) async {
+      final service = LiveSupport();
+      service.customerNames.addAll(['Trần Thị Bình', '   ']);
+      addTearDown(service.events.close);
+      api.user = {'fullName': 'Nhân viên đang đăng nhập'};
+      addTearDown(() => api.user = null);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SupportScreen(
+            key: const ValueKey('staff'),
+            staff: true,
+            service: service,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Nguyễn Văn An'), findsOneWidget);
+      expect(find.text('Trần Thị Bình'), findsOneWidget);
+      expect(find.text('Khách hàng'), findsOneWidget);
+      expect(find.text('Rightway'), findsNothing);
+      expect(find.text('Nhân viên đang đăng nhập'), findsNothing);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SupportScreen(
+            key: const ValueKey('customer'),
+            service: service,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Rightway'), findsNWidgets(3));
+      expect(find.text('Nguyễn Văn An'), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
     },
   );
   testWidgets(
